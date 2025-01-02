@@ -1,0 +1,19 @@
+# ignore all (for whitelisting)
+*
+!.gitignore
+
+# allows sub-dirs
+!*/
+
+# allow code files
+!*.cpp
+!*.h
+!*.hpp
+!*.py
+!*.proto
+
+# ignore generated files
+*_pb2.py
+*_pb2_grpc.py
+*.pb.cc
+*.pb.h
