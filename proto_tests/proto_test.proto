@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package basic_rpc;
+
+service BasicRpc {
+    rpc regRpc(request) returns (response);
+    rpc revRpc(response) returns (request);
+}
+
+message request {
+    int64 size = 1;
+}
+
+message response {
+    int64 offset = 1;
+}
