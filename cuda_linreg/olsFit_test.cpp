@@ -21,6 +21,8 @@ log_weights(const rmm::device_uvector<float>& coefs, const cudaStream_t& stream)
     return ret;
 }
 
+enum {SVD = 0, EIG = 1, QR = 2} algo;
+
 int main() {
     constexpr size_t chunk_rows = 1'000'000;
     constexpr size_t num_chunks = 4;
@@ -38,26 +40,36 @@ int main() {
         num_features + 1,
         raft_hdl.get_stream());
     for (size_t i = 0; i < num_chunks; ++i) {
-        float host_buf[chunk_rows];
-        for (size_t j = 0; j < chunk_rows; ++j)
+        float host_buf[chunk_rows + 1];
+        for (size_t j = 0; j < chunk_rows + 1; ++j)
             host_buf[j] = chunk_rows * i + j;
+        std::cout << "host buf contains [" << host_buf[0] << " ... "
+                  << host_buf[chunk_rows] << "]\n";
 
-        rmm::device_uvector<float> unified_buf(
-            chunk_rows * (num_features + 1),
+        rmm::device_uvector<float> features(
+            chunk_rows * num_features,
             raft_hdl.get_stream());
-
-        for (size_t j = 0; j <= num_features; ++j) {
+        for (size_t j = 0; j < num_features; ++j) {
             raft::update_device(
-                unified_buf.element_ptr(chunk_rows * j),
+                features.data(),
                 &host_buf[0],
                 chunk_rows,
                 raft_hdl.get_stream());
         }
+
+        rmm::device_uvector<float> labels(
+            chunk_rows,
+            raft_hdl.get_stream());
+            raft::update_device(
+                labels.data(),
+                &host_buf[0],
+                chunk_rows,
+                raft_hdl.get_stream());
         raft_hdl.get_stream().synchronize();
 
-        std::cout << unified_buf.element(chunk_rows - 8, raft_hdl.get_stream())
+        std::cout << features.element(chunk_rows - 8, raft_hdl.get_stream())
                   << " "
-                  << unified_buf.element(2 * chunk_rows - 8, raft_hdl.get_stream())
+                  << labels.element(chunk_rows - 8, raft_hdl.get_stream())
                   << std::endl;
 
         float intercept = 0;
@@ -66,15 +78,15 @@ int main() {
             raft_hdl.get_stream());
         ML::GLM::olsFit(
             raft_hdl,
-            unified_buf.element_ptr(0), // features
+            features.data(), // features
             chunk_rows,
             num_features,
-            unified_buf.element_ptr(chunk_rows * num_features), // labels
-            coefs.data(), // coefficients outparam
-            &intercept,   // intercept outparam
-            true,         // fit intercept
-            false,        // normalize
-            0);
+            labels.data(), // labels
+            coefs.data(),  // coefficients outparam
+            &intercept,    // intercept outparam
+            true,          // fit intercept
+            false,         // normalize
+            SVD);          // algorithm
         coefs.set_element(num_features, intercept, raft_hdl.get_stream());
 
         for (size_t j = 0; j <= num_features; ++j) {
@@ -92,7 +104,7 @@ int main() {
                   << "\033[35m rows and produced \033[33m"
                   << log_weights(coefs, raft_hdl.get_stream())
                   << "\033[35m\n\ttotal: \033[33m" << total_rows
-                  << "\033[35m rows, avg coefs: \033[33m"
+                  << "\033[35m rows, avg coefs:  \033[33m"
                   << log_weights(out_coefs, raft_hdl.get_stream())
                   << "\033[m\n\n";
     }
