@@ -9,6 +9,8 @@
 !*.cpp
 !*.h
 !*.hpp
+!*.cu
+!*.cuh
 !*.py
 !*.proto
 
