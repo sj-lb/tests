@@ -43,7 +43,7 @@ def align_strings(dataframe, column):
     aligned_bytes = bytearray()  
     
     for s in strings:
-        encoded = s.encode("utf-8") 
+        encoded = s.encode('utf-8') 
         length = len(encoded)  
         padding = (8 - (length % 8)) % 8  
         aligned_bytes.extend(encoded + b'\x00' * padding)  
@@ -95,7 +95,7 @@ if __name__ == '__main__':
             strings = []
             for size in sizes:  # Sizes represent the total chunk sizes
                 bytes_read = 0
-                decoded_string = ""
+                decoded_string = ''
                 while bytes_read < size:
                     mapfile.seek(offset)
                     
@@ -131,16 +131,16 @@ if __name__ == '__main__':
         out_rows = result.shape[0]
 
         if request.rows != out_rows:
-            raise ValueError(f"Mismatch: request.rows ({request.rows}) != out_rows ({out_rows})")
+            raise ValueError(f'Mismatch: request.rows ({request.rows}) != out_rows ({out_rows})')
         first_column = result.columns[0]
 
         if type_map[request.ret_type] != result[first_column].dtype:
-            raise ValueError(f"Mismatch: request.type ({type_map[request.ret_type]}) != dtype ({result[first_column].dtype})")
+            raise ValueError(f'Mismatch: request.type ({type_map[request.ret_type]}) != dtype ({result[first_column].dtype})')
         
         dtype_itemsize = result[first_column].dtype.itemsize
         
         if request.ret_type == ftblob:
-            sizes_before_alignment = [len(s.encode("utf-8")) for s in result[first_column]]
+            sizes_before_alignment = [len(s.encode('utf-8')) for s in result[first_column]]
             print(sizes_before_alignment)
             sizes_array = np.array(sizes_before_alignment, dtype=np.int32)
             sizes_as_bytes = sizes_array.tobytes()
@@ -151,14 +151,14 @@ if __name__ == '__main__':
             mem_size = len(array) + len(sizes_as_bytes)
             print(mem_size)
             resize_shared_memory(shm_name, mem_size)
-            print("resized")
+            print('resized')
             mapfile[:len(sizes_as_bytes)] = sizes_as_bytes
             mapfile[len(sizes_as_bytes):len(sizes_as_bytes) + len(array)] = array
         else:
             mem_size = (out_rows * dtype_itemsize)
             mapfile[:(out_rows * dtype_itemsize)] = result.to_numpy().tobytes()
     except Exception as e:
-        print(f"Exception occurred: {e}")
+        print(f'Exception occurred: {e}')
         out_rows = -1
         mem_size = -1
         pass

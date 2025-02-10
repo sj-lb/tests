@@ -20,19 +20,19 @@ def load_data(train_data, test_data, train_column, target_column):
     X_test = test_data.drop(columns=[target_column])
     y_test = test_data[target_column]
     X_test, y_test = remove_nan_rows(X_test, y_test)
-    print("xtrain", type(X_train))
-    print("y_test", type(y_test))
+    print('xtrain', type(X_train))
+    print('y_test', type(y_test))
     return X_train, y_train, X_test, y_test
 
 def cu_train_model(X_train, y_train, normalization):
     scaler = StandardScaler()
     if(normalization):
         X_train = scaler.fit_transform(X_train)
-        print("x shape:", X_train.shape)
-        cudf.DataFrame({"x": X_train.reshape((X_train.shape[0],)), "y": y_train}).to_csv("train_norm.csv", index=False, header=False)
+        print('x shape:', X_train.shape)
+        cudf.DataFrame({'x': X_train.reshape((X_train.shape[0],)), 'y': y_train}).to_csv('train_norm.csv', index=False, header=False)
     model = cuml_LinearRegression()
     model.fit(X_train, y_train)
-    print("\033[36mweights:\033[33m", model.coef_, model.intercept_, "\033[m")
+    print('\033[36mweights:\033[33m', model.coef_, model.intercept_, '\033[m')
     return model, scaler
 
 def sk_evaluate_model(y_pred, y_test):
@@ -48,17 +48,17 @@ def cu_evaluate_model(y_pred, y_test):
 # Calculate MSE
 def calculate_mse(y_actual, y_predicted):
     # Convert lists to arrays for calculation
-    print("actual:" ,y_actual)
-    print("predicted:", y_predicted)
+    print('actual:' ,y_actual)
+    print('predicted:', y_predicted)
     n = len(y_actual)
     mse = 0
     for a, p in zip(y_actual, y_predicted):
-        print("a:",a)
-        print("p:",p)
+        print('a:',a)
+        print('p:',p)
         mse += (a - p) ** 2
-        print("current mse: ", mse)
+        print('current mse: ', mse)
     mse = mse / n
-    print("final mse:", mse)
+    print('final mse:', mse)
     return mse
 
 # Calculate R-squared
@@ -83,7 +83,7 @@ def get_cuml_prediction(train_data, test_data, train_column, target_column):
     # Make predictions
     X_test = scaler.transform(X_test)
     # print(X_test)
-    cudf.DataFrame(X_test).to_csv("test_norm.csv", index=False, header=False)
+    cudf.DataFrame(X_test).to_csv('test_norm.csv', index=False, header=False)
 
     cuml_pred = model.predict(X_test)
     cuml_mse, cuml_r2 = cu_evaluate_model(cuml_pred, y_test)
@@ -95,8 +95,8 @@ if __name__ == '__main__':
     target_column = 'y'
     # ---------------------------------- #
     mse_r2_test_results = []
-    train_filename = "linreg_y_is_x_train_data.csv"
-    test_filename = "linreg_y_is_x_test_data.csv"
+    train_filename = 'linreg_y_is_x_train_data.csv'
+    test_filename = 'linreg_y_is_x_test_data.csv'
 
     train_data = pd.DataFrame({'x': range(1,4000000), 'y': range(1,4000000)})
     test_data = pd.DataFrame({'x':range(4000000, 4000002), 'y': range(4000000,4000002)})
@@ -111,4 +111,4 @@ if __name__ == '__main__':
     # Export incrementally results to results.csv
     res = [train_data.shape[0], test_data.shape[0], cuml_mse, cuml_r2]
     mse_r2_test_results.append(res)
-    pd.DataFrame(mse_r2_test_results).to_csv("mse_r2_results.csv", index=False, header=True)
+    pd.DataFrame(mse_r2_test_results).to_csv('mse_r2_results.csv', index=False, header=True)

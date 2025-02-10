@@ -31,29 +31,29 @@ def normalize_array(arr):
 # Example usage:
 data = np.array([1.0, 2.5, 3.0, 4.5, 5.0])
 normalized_data = normalize_array(data)
-print("full array")
-print("Original data:", data, "mean =", np.mean(data))
-print("Normalized data:", normalized_data)
-print("Mean of normalized data:", np.mean(normalized_data))
-print("Standard deviation of normalized data:", np.std(normalized_data))
+print('full array')
+print('Original data:', data, 'mean =', np.mean(data))
+print('Normalized data:', normalized_data)
+print('Mean of normalized data:', np.mean(normalized_data))
+print('Standard deviation of normalized data:', np.std(normalized_data))
 
 # Example with a single element array
 single_element_array = np.array([5.0])
 normalized_single = normalize_array(single_element_array)
-print("\nsingle val array")
-print("Original single element array:", single_element_array)
-print("Normalized single element array:", normalized_single)
+print('\nsingle val array')
+print('Original single element array:', single_element_array)
+print('Normalized single element array:', normalized_single)
 
 # Example with zero standard deviation
 zero_std_array = np.array([5.0, 5.0, 5.0])
 normalized_zero_std = normalize_array(zero_std_array)
-print("\nconstant array")
-print("Original zero std array:", zero_std_array)
-print("Normalized zero std array:", normalized_zero_std)
+print('\nconstant array')
+print('Original zero std array:', zero_std_array)
+print('Normalized zero std array:', normalized_zero_std)
 
 
 empty_array = np.array([]) # testing with an empty array
 normalized_empty = normalize_array(empty_array)
-print("\nempty array")
-print("Original empty array:", empty_array)
-print("Normalized empty array:", normalized_empty)
+print('\nempty array')
+print('Original empty array:', empty_array)
+print('Normalized empty array:', normalized_empty)

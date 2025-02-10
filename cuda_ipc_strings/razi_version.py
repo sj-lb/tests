@@ -27,8 +27,8 @@ def create_cudf_series_from_ipc(strings_pointer, offsets_pointer, lengths_pointe
     # Create cudf Series from these buffers
     series = cudf.Series._from_data(
         {
-            "data": chars_buffer,
-            "offsets": offsets_buffer,
+            'data': chars_buffer,
+            'offsets': offsets_buffer,
         },
         index=cudf.RangeIndex(num_strings),
     )
@@ -36,9 +36,9 @@ def create_cudf_series_from_ipc(strings_pointer, offsets_pointer, lengths_pointe
     return series
 
 # Example usage
-if __name__ == "__main__":
+if __name__ == '__main__':
     # Input Series to mimic IPC behavior
-    original_series = cudf.Series(["a", "bcd", "efgh"])
+    original_series = cudf.Series(['a', 'bcd', 'efgh'])
    
     # Extract raw buffers from the Series
     data_buffer = original_series._column.data_array_view
@@ -54,7 +54,7 @@ if __name__ == "__main__":
         strings_pointer, offsets_pointer, string_lengths, len(original_series)
     )
    
-    print("Original Series:")
+    print('Original Series:')
     print(original_series)
-    print("\nRecreated Series:")
+    print('\nRecreated Series:')
     print(recreated_series)
