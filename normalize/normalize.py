@@ -27,12 +27,10 @@ def normalize_array(arr):
     normalized_arr = (arr - mean) / std_dev
     return normalized_arr
 
-
 # Example usage:
 data = np.array([1.0, 2.5, 3.0, 4.5, 5.0])
 normalized_data = normalize_array(data)
-print('full array')
-print('Original data:', data, 'mean =', np.mean(data))
+print('full array\nOriginal data:', data, 'mean =', np.mean(data))
 print('Normalized data:', normalized_data)
 print('Mean of normalized data:', np.mean(normalized_data))
 print('Standard deviation of normalized data:', np.std(normalized_data))
@@ -50,7 +48,6 @@ normalized_zero_std = normalize_array(zero_std_array)
 print('\nconstant array')
 print('Original zero std array:', zero_std_array)
 print('Normalized zero std array:', normalized_zero_std)
-
 
 empty_array = np.array([]) # testing with an empty array
 normalized_empty = normalize_array(empty_array)
