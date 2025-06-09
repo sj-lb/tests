@@ -1,12 +1,3 @@
-// g++ -c -E\
- -I/usr/local/sqream-prerequisites/versions/5.24/include/apr-1\
- -I/usr/include\
- -isystem /usr/local/sqream-prerequisites/versions/5.24/include\
- -isystem /usr/local/sqream-prerequisites/versions/5.24/lib/ghc-8.6.5\
- -isystem /usr/local/sqream-prerequisites/versions/5.24/lib/ghc-8.6.5/include\
- -isystem /usr/local/sqream-prerequisites/versions/5.24/extras/CUPTI/include -isystem /usr/local/sqream-prerequisites/versions/5.24/lib/gcc/x86_64-unknown-linux-gnu/11.1.0/plugin/include -isystem /usr/local/sqream-prerequisites/versions/5.24/lib/gcc/x86_64-unknown-linux-gnu/11.1.0/plugin/include/c-family -isystem /usr/local/sqream-prerequisites/versions/5.24/aws-cpp-sdk-s3/include -isystem /usr/local/sqream-prerequisites/versions/5.24/aws-cpp-sdk-core/include -isystem /usr/local/sqream-prerequisites/versions/5.24/build/.deps/install/include -isystem /usr/local/sqream-prerequisites/versions/5.24/src -isystem /usr/local/sqream-prerequisites/versions/5.24/src/cudf -I/usr/local/sqream-prerequisites/package-install/python-3.9.13-8.5.0_alt/lib/python3.9/site-packages/numpy/core/include/ -I/usr/local/sqream-prerequisites/package-install/python-3.9.13-8.5.0_alt/include/python3.9 -I/usr/local/sqream-prerequisites/versions/5.24/samples/common/inc/ -isystem /usr/local/sqream-prerequisites/versions/5.24/include/torch/csrc/api/include -Ibuild/remote-pkgs/protobuffers-build/src/main/protobuf -march=native -mtune=native -pipe -std=c++17 -fconcepts -fmessage-length=0 -fPIC -fsigned-char -fstack-protector-all -DFMT_HEADER_ONLY=1 -DLIBCUDACXX_ENABLE_EXPERIMENTAL_MEMORY_RESOURCE -DSPDLOG_FMT_EXTERNAL -DUSE_C10D_GLOO -DUSE_DISTRIBUTED -DUSE_RPC -DUSE_TENSORPIPE -g3 -DDEBUG -DCUDA=CUDA  -Wextra -Wno-variadic-macros -Wall -Werror=cast-qual -Werror=return-type -Werror=init-self -Werror=format -Werror=uninitialized -Werror=unused-result -Wno-error=cpp -Werror -pthread -D LIBCUDACXX_ENABLE_EXPERIMENTAL_MEMORY_RESOURCE -o build/cpp/runtime/chunk_producers/LinearRegressionTrain.i cpp/runtime/chunk_producers/LinearRegressionTrain.cpp
-// g++ -c -Icuda -Icpp -Ilicensing -I/usr/local/sqream-prerequisites/versions/5.24/include/apr-1/ -Idist/build/Database/Sqream/Compile/ -I/usr/include/ -isystem /usr/local/sqream-prerequisites/versions/5.24/include -isystem /usr/local/sqream-prerequisites/versions/5.24/lib/ghc-8.6.5 -isystem /usr/local/sqream-prerequisites/versions/5.24/lib/ghc-8.6.5/include -isystem /usr/local/sqream-prerequisites/versions/5.24/extras/CUPTI/include -isystem /usr/local/sqream-prerequisites/versions/5.24/lib/gcc/x86_64-unknown-linux-gnu/11.1.0/plugin/include -isystem /usr/local/sqream-prerequisites/versions/5.24/lib/gcc/x86_64-unknown-linux-gnu/11.1.0/plugin/include/c-family -isystem /usr/local/sqream-prerequisites/versions/5.24/aws-cpp-sdk-s3/include -isystem /usr/local/sqream-prerequisites/versions/5.24/aws-cpp-sdk-core/include -isystem /usr/local/sqream-prerequisites/versions/5.24/build/.deps/install/include -isystem /usr/local/sqream-prerequisites/versions/5.24/src -isystem /usr/local/sqream-prerequisites/versions/5.24/src/cudf -I/usr/local/sqream-prerequisites/package-install/python-3.9.13-8.5.0_alt/lib/python3.9/site-packages/numpy/core/include/ -I/usr/local/sqream-prerequisites/package-install/python-3.9.13-8.5.0_alt/include/python3.9 -I/usr/local/sqream-prerequisites/versions/5.24/samples/common/inc/ -isystem /usr/local/sqream-prerequisites/versions/5.24/include/torch/csrc/api/include -Ibuild/remote-pkgs/protobuffers-build/src/main/protobuf -march=native -mtune=native -pipe -std=c++17 -fconcepts -fmessage-length=0 -fPIC -fsigned-char -fstack-protector-all -DFMT_HEADER_ONLY=1 -DLIBCUDACXX_ENABLE_EXPERIMENTAL_MEMORY_RESOURCE -DSPDLOG_FMT_EXTERNAL -DUSE_C10D_GLOO -DUSE_DISTRIBUTED -DUSE_RPC -DUSE_TENSORPIPE -g3 -DDEBUG -DCUDA=CUDA  -Wextra -Wno-variadic-macros -Wall -Werror=cast-qual -Werror=return-type -Werror=init-self -Werror=format -Werror=uninitialized -Werror=unused-result -Wno-error=cpp -Werror -pthread -D LIBCUDACXX_ENABLE_EXPERIMENTAL_MEMORY_RESOURCE -o build/cpp/runtime/chunk_producers/LinearRegressionTrain.o cpp/runtime/chunk_producers/LinearRegressionTrain.cpp
-
 // g++ -g logreg.cpp -o test.out\
  -fconcepts -fmessage-length=0 -fPIC -fsigned-char -fstack-protector-all\
  -DUSE_TENSORPIPE -DFMT_HEADER_ONLY=1 -DSPDLOG_FMT_EXTERNAL -DUSE_C10D_GLOO\
@@ -22,23 +13,6 @@
 #include <rmm/device_uvector.hpp>
 
 static constexpr size_t bias = 1;
-
-static std::string log_weights(std::vector<double> weights)
-{
-    std::string ret("[");
-    for (double w : weights)
-        ret += std::to_string(w) + ", ";
-    return ret.substr(0, ret.length() - 2) + "]";
-}
-
-static std::string log_weights(const rmm::device_uvector<double>& coefs)
-{
-    std::string ret("[");
-    for (size_t i = 0; i < coefs.size(); ++i)
-        ret += std::to_string(coefs.element(i, coefs.stream())) +
-               (i == coefs.size() - 1 ? "]" : ", ");
-    return ret;
-}
 
 template<typename T>
 std::vector<T> parse_csv_line(const std::string& line) {
@@ -68,13 +42,19 @@ std::vector<T> read_csv(const std::string& filename, size_t& rows) {
         std::cerr << "Error: Could not open " << filename << std::endl;
         exit(1);
     }
+    std::vector<std::vector<T>> v_rows;
     std::string line;
     while (std::getline(ifs, line)) {
-        std::vector<T> row = parse_csv_line<T>(line);
-        ret.insert(ret.end(), row.begin(), row.end());
+        v_rows.push_back(parse_csv_line<T>(line));
+        // ret.insert(ret.end(), row.begin(), row.end());
         ++rows;
     }
     ifs.close();
+    size_t cols = v_rows[0].size();
+    std::cout << "dims: " << rows << "x" << cols << std::endl;
+    for (size_t i = 0; i < cols; ++i)
+        for (auto r : v_rows)
+            ret.push_back(r[i]);
 
     return ret;
 }
@@ -93,15 +73,20 @@ std::vector<double> calculate_model_weights()
 
     size_t rows = 0;
     size_t meh;
-    std::vector<double> xdata(read_csv<double>("xtrain.csv", rows));
-    size_t num_features = xdata.size() / rows;
-    std::vector<double> model_weights(num_features + bias);
-    rmm::device_uvector<double> features(rows * num_features, raft_hdl.get_stream());
-    raft::update_device(features.data(), xdata.data(), rows * num_features, raft_hdl.get_stream());
+    // std::vector<double> xdata(read_csv<double>("xtrain.csv", rows));
+    // size_t num_features = xdata.size() / rows;
+    // rmm::device_uvector<double> features(rows * num_features, raft_hdl.get_stream());
+    // raft::update_device(features.data(), xdata.data(), rows * num_features, raft_hdl.get_stream());
     
-    std::vector<double> ydata(read_csv<double>("ytrain.csv", meh));
-    rmm::device_uvector<double> labels(rows, raft_hdl.get_stream());
-    raft::update_device(labels.data(), ydata.data(), rows, raft_hdl.get_stream());
+    // std::vector<double> ydata(read_csv<double>("ytrain.csv", meh));
+    // rmm::device_uvector<double> labels(rows, raft_hdl.get_stream());
+    // raft::update_device(labels.data(), ydata.data(), rows, raft_hdl.get_stream());
+    std::vector<double> data(read_csv<double>("alltrain.csv", rows));
+    size_t num_features = data.size() / rows - 1;
+    std::cout << "\033[35mdims: \033[33;1m" << rows << "\033[0;35mx\033[33;1m"
+              << num_features << "\033[m\n";
+    rmm::device_uvector<double> dvec(rows * (num_features + 1), raft_hdl.get_stream());
+    raft::update_device(dvec.data(), data.data(), rows * (num_features + 1), raft_hdl.get_stream());
 
     raft_hdl.get_stream().synchronize();
 
@@ -110,18 +95,22 @@ std::vector<double> calculate_model_weights()
     rmm::device_uvector<double> coefs(
         num_features + bias,
         raft_hdl.get_stream());
+    std::cout << "data: " << dvec << std::endl;
     ML::GLM::qnFit(
         raft_hdl,
         params,
-        features.data(),
-        false, // features is col major
-        labels.data(),
+        dvec.data(),
+        true, // features is col major
+        dvec.element_ptr(rows * num_features),
         static_cast<int>(rows),
         static_cast<int>(num_features),
         static_cast<int>(num_classes),
         coefs.data(),
         &intercept,
         &epochs);
+    std::cout << "epochs: " << epochs << std::endl;
+
+    std::vector<double> model_weights(num_features + bias);
     for (size_t i = 0; i < model_weights.size(); i++)
         model_weights[i] = coefs.element(i, coefs.stream());
     // model_weights[model_weights.size() - 1] = intercept;
