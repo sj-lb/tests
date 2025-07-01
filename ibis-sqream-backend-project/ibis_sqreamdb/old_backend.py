@@ -26,11 +26,12 @@ import ibis.backends.sql.compilers as sc
 class Backend(SQLBackend):
     name = "sqream"
     
+    #dialect = "postgres"
     #compiler = SqreamCompiler
     #compiler_class = SqreamCompiler
-    # dialect = 'postgres'
-    # compiler = sc.postgres.compiler
-    dialect = 'sqlite'
+    #compiler=sc.postgres.compiler
+    #dialect = 'postgres'
+    dialect = "sqlite"
     compiler = sc.sqlite.compiler
     
     
@@ -80,13 +81,18 @@ class Backend(SQLBackend):
 
     @contextlib.contextmanager
     def _safe_raw_sql(self, query, **kwargs):
+        # The dialect used for SQL generation is now "postgres"
+        #traceback.print_stack()
+        print("SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS",type(query))
+        print("RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR",query)
         if not isinstance(query, str):
             query = query.sql(dialect=self.dialect)
-        print(f'\033[32;1m{__name__}\033[33m::\033[32m_safe_raw_sql\033[33m::\033[32mquery \033[33m= \033[34m{query}\033[m')
         cursor = self.con.cursor()
         try:
             logger.info(f"Executing SQL: {query}")
+            print("BEFORE QQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQ" ,query)           
             cursor.execute(query, **kwargs)
+            print("AFTER QQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQ" ,query)
             yield cursor
         finally:
             cursor.close()
@@ -94,6 +100,7 @@ class Backend(SQLBackend):
     def list_tables(self, *, like: str | None = None, schema: str | None = None) -> list[str]:
         query = sg.select(C.table_name).from_(sg.table("tables", db="sqream_catalog"))
         conditions =""
+        #conditions = [C.table_type.isin(sge.convert("BASE TABLE"), sge.convert("VIEW"))]
         if schema:
             conditions.append(C.table_schema.eq(sge.convert(schema)))
         query = query.where(*conditions)
@@ -111,17 +118,22 @@ class Backend(SQLBackend):
         
         if catalog is not None:
             logger.info("SQreamDB does not support catalogs, the 'catalog' argument will be ignored.")
-
+        
+        
+         
         query = (
+            
             sg.select(C.column_name, C.type_name, sge.false())
             #sg.select('get_col_name(' +C.column_name+')', C.type_name, False)
             .from_(sg.table('view_sqream_catalog_columns', db='public'))
-            .where(C.table_name.eq(sge.convert(table_name))))
+            .where(C.table_name.eq(sge.convert(table_name)))
+        )
         
         # The 'database' parameter now correctly matches the variable name
         if database:
             query = query.where(C.table_schema.eq(sge.convert(database)))
         #query = query.order_by(C.ordinal_position)
+        #print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@",query)
         with self._safe_raw_sql(query) as cur:
             rows = cur.fetchall()
         if not rows:
@@ -150,6 +162,9 @@ class Backend(SQLBackend):
 
         ibis_schema = ibis.schema(schema) if schema is not None else ibis.memtable(obj).schema()
         
+        if overwrite:
+            self.drop_table(name, schema=database, force=True)
+            
         # --- THE DEFINITIVE FIX: Manually build the SQL string ---
 
         # 1. Get the quoted table name (e.g., "my_schema"."my_table")
@@ -171,8 +186,8 @@ class Backend(SQLBackend):
             raise com.IbisError("Cannot create a table with no columns")
 
         # 4. Assemble the final, complete SQL string using a simple f-string
-        cmd = 'create or replace ' if overwrite else 'create'
-        create_stmt_sql = f"{cmd} TABLE {target_sql} ({columns_sql})"
+        create_stmt_sql = f"CREATE TABLE {target_sql} ({columns_sql})"
+        #print('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%',create_stmt_sql)
         logger.info(f"Final generated SQL to be executed: {create_stmt_sql}")
         
         with self._safe_raw_sql(create_stmt_sql):
@@ -222,58 +237,13 @@ class Backend(SQLBackend):
         # For example, converting string dates to datetime objects.
         return df
     
-    # In your ibis-sqream-backend-project/ibis_sqreamdb/backend.py file
-    # Make sure you have `import sqlglot as sg` at the top of your file.
     def insert(self, name: str, obj: pd.DataFrame | ir.Table, *, schema: str | None = None, overwrite: bool = False):
-        """
-        Insert data into a table.
-        This version correctly handles pandas DataFrames directly.
-        """
         table = sg.table(name, db=schema, quoted=self.compiler.quoted)
         if overwrite:
             with self._safe_raw_sql(sge.Delete(this=table)):
                 pass
-        if isinstance(obj, ir.Table):
-            # This path is for inserting from another ibis Table
-            query = sge.Insert(this=table, expression=self.compile(obj))
-            with self._safe_raw_sql(query):
-                pass
-        elif isinstance(obj, pd.DataFrame):
-            # This is the direct, robust path for pandas DataFrames.
-            if obj.empty:
-                return
-            # ** THE FINAL FIX IS HERE **
-            # We use sqlglot directly to create quoted identifiers.
-            # This is the correct and robust way to do this.
-            column_names = ", ".join(sg.to_identifier(c).sql(self.dialect) for c in obj.columns)
-            placeholders = ", ".join(["?"] * len(obj.columns))
-            insert_sql = f"INSERT INTO {table.sql(self.dialect)} ({column_names}) VALUES ({placeholders})"
-            print(f'\033[32;1mINSERT SQL: \033[33m{insert_sql}\033[m')
-            # SQreamDB's executemany expects a list of tuples.
-            # Replace NaN with None, as databases use NULL.
-            data_to_insert = []
-            for row in obj.itertuples(index=False, name=None):
-                processed_row_elements = []
-                for v in row:
-                    if isinstance(v, list):
-                        for item in v:
-                            item = None if pd.isna(item) else item
-                    elif pd.isna(v):
-                        v = None
-                    elif pd.api.types.is_string_dtype(type(v)):
-                        v = str(v)
-                    processed_row_elements.append(v)
-                data_to_insert.append(tuple(processed_row_elements))
-            print(f'\033[34;1mdata_to_insert: \033[33m{data_to_insert}\033[m')
-            with self.con.cursor() as cursor:
-                try:
-                    logger.info(f"Executing INSERT with {len(data_to_insert)} rows into {name}")
-                    cursor.executemany(insert_sql, data_to_insert)
-                except Exception:
-                    logger.error("Insert failed.", exc_info=True)
-                    # Use self.con.rollback() if your driver supports it
-                    # self.con.rollback()
-                    raise
-        else:
-            raise TypeError(f"Unsupported object type for insert: {type(obj)}")
-
+        if not isinstance(obj, ir.Expr):
+            obj = ibis.memtable(obj)
+        query = sge.Insert(this=table, expression=self.compile(obj))
+        with self._safe_raw_sql(query):
+            pass

@@ -5,6 +5,7 @@ import ibis
 import logging
 import sys
 from ibis_sqreamdb import Backend, connect
+import traceback
 
 # --- Logging Setup ---
 # Configures logging to write to a file and the console.
@@ -38,9 +39,18 @@ def test_backend_operations():
     
     try:
         # Define a simple schema and create the table
-        schema = ibis.schema({"a": "int", "b": "string"})
+        schema = ibis.schema(
+            {"i": "int32", # int
+             "l": "int64", # bigint
+             "f0": "float", # real
+             "f1": "float", # float
+             "f0": "float", # real
+             "b": "boolean",
+             "s": "string"})
+        # schema = ibis.schema(
+        #     {"a": "int",
+        #      "b": "string"})
         con.create_table(table_name, schema=schema, overwrite=True)
-        sys.exit(0)
         logging.info(f"Table '{table_name}' created successfully.")
         
 
@@ -49,7 +59,8 @@ def test_backend_operations():
         logging.info(f"Current tables: {tables}")
         assert table_name in tables
         logging.info(f"Assertion successful: Table '{table_name}' found in list_tables().")
-    
+    except:
+        print(f'\033[31m{traceback.format_exc()}\033[m')
     finally:
         # Teardown: ensure the table is always cleaned up
         logging.info(f"Cleaning up test table: {table_name}")
@@ -205,10 +216,10 @@ def test_join_operations():
 if __name__ == "__main__":
     try:
         # Run all test functions
-        #test_backend_operations()
+        test_backend_operations()
         #test_aggregate_operations()
         #test_join_operations()
-        test_is_null()
+        # test_is_null()
         print("\n--- ALL TESTS PASSED! ---")
     except Exception:
         # Log the full traceback if any test fails
