@@ -16,23 +16,25 @@ import ibis.expr.operations as ops
 import ibis.expr.schema as sch
 import ibis.expr.types as ir
 from ibis.backends.sql import SQLBackend
-from ibis.backends.sql.compilers import PostgresCompiler
 from ibis.backends.sql.compilers.base import C
 
 from .compiler import SqreamCompiler
+from .dialect import SQreamDialect
 
 logger = logging.getLogger("ibis.sqream")
 import ibis.backends.sql.compilers as sc
 class Backend(SQLBackend):
-    name = "sqream"
+    name = 'sqream'
     
-    #compiler = SqreamCompiler
-    #compiler_class = SqreamCompiler
+    compiler = SqreamCompiler()
     # dialect = 'postgres'
     # compiler = sc.postgres.compiler
-    dialect = 'sqlite'
-    compiler = sc.sqlite.compiler
-    
+    # dialect = 'sqlite'
+    # compiler = sc.sqlite.compiler
+    # dialect = 'mssql'
+    # compiler = sc.mssql.compiler
+    dialect = SQreamDialect()
+    # compiler = sc.oracle.compiler
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -82,7 +84,7 @@ class Backend(SQLBackend):
     def _safe_raw_sql(self, query, **kwargs):
         if not isinstance(query, str):
             query = query.sql(dialect=self.dialect)
-        print(f'\033[32;1m{__name__}\033[33m::\033[32m_safe_raw_sql\033[33m::\033[32mquery \033[33m= \033[34m{query}\033[m')
+        print(f'\033[32;1m{__name__}\033[33m::\033[32m_safe_raw_sql\033[33m::\033[32mquery \033[33m=\033[34m {query}\033[m')
         cursor = self.con.cursor()
         try:
             logger.info(f"Executing SQL: {query}")
@@ -171,8 +173,8 @@ class Backend(SQLBackend):
             raise com.IbisError("Cannot create a table with no columns")
 
         # 4. Assemble the final, complete SQL string using a simple f-string
-        cmd = 'create or replace ' if overwrite else 'create'
-        create_stmt_sql = f"{cmd} TABLE {target_sql} ({columns_sql})"
+        cmd = 'CREATE OR REPLACE' if overwrite else 'CREATE'
+        create_stmt_sql = f'{cmd} TABLE {target_sql} ({columns_sql})'
         logger.info(f"Final generated SQL to be executed: {create_stmt_sql}")
         
         with self._safe_raw_sql(create_stmt_sql):
@@ -242,9 +244,6 @@ class Backend(SQLBackend):
             # This is the direct, robust path for pandas DataFrames.
             if obj.empty:
                 return
-            # ** THE FINAL FIX IS HERE **
-            # We use sqlglot directly to create quoted identifiers.
-            # This is the correct and robust way to do this.
             column_names = ", ".join(sg.to_identifier(c).sql(self.dialect) for c in obj.columns)
             placeholders = ", ".join(["?"] * len(obj.columns))
             insert_sql = f"INSERT INTO {table.sql(self.dialect)} ({column_names}) VALUES ({placeholders})"
@@ -260,8 +259,6 @@ class Backend(SQLBackend):
                             item = None if pd.isna(item) else item
                     elif pd.isna(v):
                         v = None
-                    elif pd.api.types.is_string_dtype(type(v)):
-                        v = str(v)
                     processed_row_elements.append(v)
                 data_to_insert.append(tuple(processed_row_elements))
             print(f'\033[34;1mdata_to_insert: \033[33m{data_to_insert}\033[m')
@@ -269,11 +266,9 @@ class Backend(SQLBackend):
                 try:
                     logger.info(f"Executing INSERT with {len(data_to_insert)} rows into {name}")
                     cursor.executemany(insert_sql, data_to_insert)
-                except Exception:
+                except Exception as e:
                     logger.error("Insert failed.", exc_info=True)
-                    # Use self.con.rollback() if your driver supports it
-                    # self.con.rollback()
-                    raise
+                    print(f'\033[31mERROR ENCOUNTERED, PRINTING TRACEBACK:\033[m\n{traceback.format_exc()}')
+                    raise e
         else:
             raise TypeError(f"Unsupported object type for insert: {type(obj)}")
-
