@@ -1,5 +1,7 @@
 from sqlglot import exp
 from sqlglot.dialects.dialect import Dialect
+from ibis.expr import types as ir
+from sqlglot.parser import Parser
 from sqlglot.generator import Generator
 from sqlglot.tokens import Tokenizer, TokenType
 
@@ -31,4 +33,18 @@ class SQreamDialect(Dialect):
             exp.DataType.Type.TINYTEXT: "TEXT",
             exp.DataType.Type.FLOAT: "REAL",
             exp.DataType.Type.DECIMAL: "NUMERIC",
+        }
+
+        def datatype_sql(self, expression: exp.DataType) -> str:
+            if expression.is_type(exp.DataType.Type.ARRAY):
+                if expression.expressions:
+                    values = self.expressions(expression, key="values", flat=True)
+                    return f"{self.expressions(expression, flat=True)}[{values}]"
+                return 'ARRAY'
+            return super().datatype_sql(expression)
+
+    class Parser(Parser):
+        FUNCTIONS = {
+            **Parser.FUNCTIONS,
+            "CHARINDEX": lambda substr, arg: exp.func('CHARINDEX', substr, arg, dialect=SQreamDialect)
         }

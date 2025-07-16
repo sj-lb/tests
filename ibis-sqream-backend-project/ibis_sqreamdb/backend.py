@@ -25,19 +25,12 @@ logger = logging.getLogger("ibis.sqream")
 import ibis.backends.sql.compilers as sc
 class Backend(SQLBackend):
     name = 'sqream'
-    
     compiler = SqreamCompiler()
-    # dialect = 'postgres'
-    # compiler = sc.postgres.compiler
-    # dialect = 'sqlite'
-    # compiler = sc.sqlite.compiler
-    # dialect = 'mssql'
-    # compiler = sc.mssql.compiler
     dialect = SQreamDialect()
-    # compiler = sc.oracle.compiler
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.do_connect() # for range tests
          # Keep this from our previous steps
     def _from_url(self, url: ParseResult, **kwargs):
         connect_kwargs = kwargs.copy()
@@ -116,7 +109,6 @@ class Backend(SQLBackend):
 
         query = (
             sg.select(C.column_name, C.type_name, sge.false())
-            #sg.select('get_col_name(' +C.column_name+')', C.type_name, False)
             .from_(sg.table('view_sqream_catalog_columns', db='public'))
             .where(C.table_name.eq(sge.convert(table_name))))
         
@@ -131,7 +123,7 @@ class Backend(SQLBackend):
 
         names, types, nullables = zip(*rows)
         ibis_types = [
-            self.compiler.type_mapper.from_string(t, nullable=n == "YES")
+            self.compiler.type_mapper.from_string(type_string=t, nullable=n)
             for t, n in zip(types, nullables)
         ]
         return sch.Schema(dict(zip(names, ibis_types)))
@@ -213,19 +205,12 @@ class Backend(SQLBackend):
         """
         import pandas as pd
 
-        # This is the crucial step: call .fetchall() to get the data
-        # out of the cursor and into a list of tuples.
         data = cursor.fetchall()
         
-        # Now, create the DataFrame from the list of data.
         df = pd.DataFrame.from_records(data, columns=schema.names)
         
-        # Here you could add more complex type conversions if needed
-        # For example, converting string dates to datetime objects.
         return df
-    
-    # In your ibis-sqream-backend-project/ibis_sqreamdb/backend.py file
-    # Make sure you have `import sqlglot as sg` at the top of your file.
+
     def insert(self, name: str, obj: pd.DataFrame | ir.Table, *, schema: str | None = None, overwrite: bool = False):
         """
         Insert data into a table.
@@ -244,7 +229,7 @@ class Backend(SQLBackend):
             # This is the direct, robust path for pandas DataFrames.
             if obj.empty:
                 return
-            column_names = ", ".join(sg.to_identifier(c).sql(self.dialect) for c in obj.columns)
+            column_names = ", ".join(sg.to_identifier(c, quoted=True).sql(self.dialect) for c in obj.columns)
             placeholders = ", ".join(["?"] * len(obj.columns))
             insert_sql = f"INSERT INTO {table.sql(self.dialect)} ({column_names}) VALUES ({placeholders})"
             print(f'\033[32;1mINSERT SQL: \033[33m{insert_sql}\033[m')
@@ -270,5 +255,3 @@ class Backend(SQLBackend):
                     logger.error("Insert failed.", exc_info=True)
                     print(f'\033[31mERROR ENCOUNTERED, PRINTING TRACEBACK:\033[m\n{traceback.format_exc()}')
                     raise e
-        else:
-            raise TypeError(f"Unsupported object type for insert: {type(obj)}")

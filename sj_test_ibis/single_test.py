@@ -5,10 +5,25 @@ import pandas as pd
 import numpy as np
 import pytest
 import ibis
+from ibis.expr import operations as ops
 from ibis import _
 import traceback
 # Use the direct connect function that is known to work
 from ibis_sqreamdb import connect
+from crcmod.predefined import mkCrcFun # requires python3.11 -m pip install crcmod
+
+# from ibis import datatypes as dt # Import datatypes
+
+
+HOST = os.environ.get("IBIS_SQREAM_HOST", "127.0.0.1")
+PORT = int(os.environ.get("IBIS_SQREAM_PORT", 5000))
+USER = os.environ.get("IBIS_SQREAM_USER", "sqream")
+PASSWORD = os.environ.get("IBIS_SQREAM_PASSWORD", "sqream")
+DATABASE = os.environ.get("IBIS_SQREAM_DATABASE", "master")
+CLUSTERED = os.environ.get("IBIS_SQREAM_CLUSTERED", "false").lower() == "true"
+ibis_con = connect(host=HOST, port=PORT, user=USER, password=PASSWORD, database=DATABASE, clustered=CLUSTERED)
+
+ibis.set_backend('sqream://sqream:sqream@192.168.4.31:5000')
 
 # --- Logging Setup ---
 logging.basicConfig(
@@ -18,12 +33,6 @@ logging.basicConfig(
         logging.FileHandler("/tmp/ibis_sqream_all_ops_test.log", mode='w'),
         logging.StreamHandler(sys.stdout)])
 
-HOST = os.environ.get("IBIS_SQREAM_HOST", "192.168.4.31")
-PORT = int(os.environ.get("IBIS_SQREAM_PORT", 5000))
-USER = os.environ.get("IBIS_SQREAM_USER", "sqream")
-PASSWORD = os.environ.get("IBIS_SQREAM_PASSWORD", "sqream")
-DATABASE = os.environ.get("IBIS_SQREAM_DATABASE", "master")
-CLUSTERED = os.environ.get("IBIS_SQREAM_CLUSTERED", "false").lower() == "true"
 
 def pandas_dtype_to_ibis_string(dtype, col=None):
     """
@@ -59,8 +68,6 @@ def pandas_dtype_to_ibis_string(dtype, col=None):
 def run_test_case(op_name, data: pd.DataFrame, ibis_expr_func, pandas_expr_func):
     logging.info(f"--- Running Test: {op_name} ---")
     
-    con = connect(host=HOST, port=PORT, user=USER, password=PASSWORD, database=DATABASE, clustered=CLUSTERED)
-
     table_name = f"ibis_test_{op_name.lower()}"
     
     try:
@@ -68,13 +75,13 @@ def run_test_case(op_name, data: pd.DataFrame, ibis_expr_func, pandas_expr_func)
             name: pandas_dtype_to_ibis_string(dtype, data[col]) for col, (name, dtype) in zip(data.columns, data.dtypes.items())}
         schema = ibis.schema(schema_dict)
         
-        con.create_table(table_name, schema=schema, overwrite=True)
+        ibis_con.create_table(table_name, schema=schema, overwrite=True)
         logging.info(f"Created empty table '{table_name}' with schema: {schema}")
 
-        con.insert(table_name, obj=data)
+        ibis_con.insert(table_name, obj=data)
         logging.info(f"Inserted data into '{table_name}'")
         
-        ibis_table = con.table(table_name)
+        ibis_table = ibis_con.table(table_name)
         ibis_expr = ibis_expr_func(ibis_table)
         
         expected_df = pandas_expr_func(data)
@@ -88,10 +95,6 @@ def run_test_case(op_name, data: pd.DataFrame, ibis_expr_func, pandas_expr_func)
         if isinstance(expected_df, pd.Series):
             expected_df = expected_df.to_frame()
 
-        expected_cols = sorted(list(expected_df.columns))
-        ibis_result_df = ibis_result_df[expected_cols].sort_values(by=expected_cols).reset_index(drop=True)
-        expected_df = expected_df[expected_cols].sort_values(by=expected_cols).reset_index(drop=True)
-        
         for col in expected_df.columns:
             if col in ibis_result_df.columns:
                 try:
@@ -112,7 +115,7 @@ def run_test_case(op_name, data: pd.DataFrame, ibis_expr_func, pandas_expr_func)
     finally:
         logging.info(f"Cleaning up table '{table_name}'...")
         try:
-            con.drop_table(table_name, force=True)
+            ibis_con.drop_table(table_name, force=True)
             logging.info(f"Cleaned up table '{table_name}'")
         except Exception as e:
             logging.error(f"Could not drop table {table_name}. Reason: {e}")
@@ -134,8 +137,8 @@ def run_test_case2(op_name, data: dict[str, pd.DataFrame], ibis_expr_func, panda
     """
     logging.info(f"--- Running Test: {op_name} ---")
 
-    con = connect(
-        host=HOST, port=PORT, user=USER, password=PASSWORD, database=DATABASE, clustered=CLUSTERED)
+    # ibis_con = connect(
+    #     host=HOST, port=PORT, user=USER, password=PASSWORD, database=DATABASE, clustered=CLUSTERED)
 
     created_tables = [] # To keep track of tables created for cleanup
 
@@ -151,13 +154,13 @@ def run_test_case2(op_name, data: dict[str, pd.DataFrame], ibis_expr_func, panda
                 col: pandas_dtype_to_ibis_string(dtype) for col, dtype in df.dtypes.items()}
             schema = ibis.schema(schema_dict)
 
-            con.create_table(table_name, schema=schema, overwrite=True)
+            ibis_con.create_table(table_name, schema=schema, overwrite=True)
             logging.info(f"Created empty table '{table_name}' with schema: {schema}")
 
-            con.insert(table_name, obj=df)
+            ibis_con.insert(table_name, obj=df)
             logging.info(f"Inserted data into '{table_name}'")
 
-            ibis_tables[table_key] = con.table(table_name)
+            ibis_tables[table_key] = ibis_con.table(table_name)
 
         ibis_expr = ibis_expr_func(ibis_tables)
         expected_df = pandas_expr_func(data)
@@ -195,21 +198,100 @@ def run_test_case2(op_name, data: dict[str, pd.DataFrame], ibis_expr_func, panda
         for table_name_to_drop in created_tables:
             logging.info(f"Cleaning up table '{table_name_to_drop}'...")
             try:
-                con.drop_table(table_name_to_drop, force=True)
+                ibis_con.drop_table(table_name_to_drop, force=True)
                 logging.info(f"Cleaned up table '{table_name_to_drop}'")
             except Exception as e:
                 logging.error(f"Could not drop table {table_name_to_drop}. Reason: {e}")
 
-# def test_op_arg_max():
-#     run_test_case(
-#         op_name='ArgMax',
-#         data=pd.DataFrame({'id': [1, 2, 3, 4], 'value': [10, 50, 20, 30]}),
-#         ibis_expr_func=lambda t: t.id.argmax(t.value),
-#         pandas_expr_func=lambda df: pd.DataFrame({'id_at_max': [df.loc[df['value'].idxmax(), 'id']]}))
-
-def test_op_date_timestamp_truncate():
+def test_op_arg_max():
     run_test_case(
-        op_name='DateTimestampTruncate',
-        data=pd.DataFrame({'ts': pd.to_datetime(['2023-05-15 14:35:10', '2024-01-01 00:00:00'])}),
-        ibis_expr_func=lambda t: t.select(truncated_month=t.ts.truncate('month')),
-        pandas_expr_func=lambda df: pd.DataFrame({'truncated_month': df['ts'].dt.to_period('M').dt.start_time}))
+        op_name='ArgMax',
+        data=pd.DataFrame({'id': [1, 2, 3, 4], 'value': [10, 50, 20, 30]}),
+        ibis_expr_func=lambda t: t.id.argmax(t.value),
+        pandas_expr_func=lambda df: pd.DataFrame({'id_at_max': [df.loc[df['value'].idxmax(), 'id']]}))
+
+# def test_op_first():
+#     run_test_case(
+#         op_name='First',
+#         data=pd.DataFrame({'id': [1, 2, 3], 'value': ['a', 'b', 'c']}),
+#         ibis_expr_func=lambda t: t.aggregate(first_val=t.value.first()),
+#         pandas_expr_func=lambda df: pd.DataFrame({'first_val': [df['value'].iloc[0]]}))
+
+# def test_op_last():
+#     run_test_case(
+#         op_name='Last',
+#         data=pd.DataFrame({'id': [1, 2, 3], 'value': [100.1, 10.2, 1.3]}),
+#         ibis_expr_func=lambda t: t.aggregate(last_val=t.value.last()),
+#         pandas_expr_func=lambda df: pd.DataFrame({'last_val': [df['value'].iloc[-1]]}))
+
+# def test_op_group_concat():
+#     run_test_case(
+#         op_name='GroupConcat',
+#         data=pd.DataFrame({'group_col': ['A', 'A', 'B', 'B'], 'value': ['foo', 'bar', 'baz', 'qux']}),
+#         ibis_expr_func=lambda t: t.group_by('group_col').aggregate(concatenated=t.value.group_concat(', ')),
+#         pandas_expr_func=lambda df: df.groupby('group_col', as_index=False)['value'].apply(lambda x: ', '.join(x)).reset_index())
+
+# def test_op_range():
+#     start_val, end_val = 0, 5
+#     run_test_case(
+#         op_name='RangeFloat',
+#         data=pd.DataFrame({'value': []}, dtype=np.int32), # Just for schema and expected df
+#         ibis_expr_func=lambda t: ibis.range(start_val, end_val + 1, 1),
+#         pandas_expr_func=lambda df: pd.DataFrame({'value': np.arange(start_val, end_val + 1)}))
+
+# def test_op_multi_quantile():
+#     run_test_case(
+#         op_name='MultiQuantile',
+#         data=pd.DataFrame({'value': list(range(1, 101))}),
+#         ibis_expr_func=lambda t: t.aggregate(quantiles=t.value.quantile([0.25, 0.5, 0.75])),
+#         pandas_expr_func=lambda df: pd.DataFrame({'quantiles': [list(df['value'].quantile([0.25, 0.5, 0.75]))]}))
+
+# def test_op_timestamp_bucket():
+#     run_test_case(
+#         op_name='TimestampBucket',
+#         data=pd.DataFrame({'ts': pd.to_datetime(['2023-01-01 10:05:00', '2023-01-01 10:15:00', '2023-01-01 10:25:00'])}, dtype='datetime64[ms]'),
+#         ibis_expr_func=lambda t: t.select(bucket=t.ts.bucket(ibis.interval(10, 'm'))),
+#         pandas_expr_func=lambda df: pd.DataFrame({'bucket': df['ts'].dt.floor('10min')}))
+
+# def test_op_array_all():
+#     run_test_case(
+#         op_name='ArrayAll',
+#         data=pd.DataFrame({'values': [[True, True], [True, False], [False, False]]}),
+#         ibis_expr_func=lambda t: t.select(all_true=t.values.all()),
+#         pandas_expr_func=lambda df: pd.DataFrame({'all_true': df['values'].apply(all)}))
+
+# def test_op_integer_range():
+#     start_val, end_val = 1, 5
+#     run_test_case(
+#         op_name='IntegerRange',
+#         data=pd.DataFrame({'value': []}, dtype=np.int32),
+#         ibis_expr_func=lambda t, ibis_con: ibis_con.insert(t.op().name, obj=ibis.range(start_val, end_val + 1).to_pandas()),
+#         pandas_expr_func=lambda df: pd.DataFrame({'value': range(start_val, end_val + 1)}))
+
+# def test_op_pct_change():
+#     run_test_case(
+#         op_name='PctChange',
+#         data=pd.DataFrame({'value': [10.0, 20.0, 15.0, 5.0, 0.0, 10.0, np.nan, 5.0, 0.0, 0.0, 20.0]}),
+#         ibis_expr_func=lambda t: t.select(pct_change_val=(t.value - t.value.lag()) / t.value.lag()),
+#         pandas_expr_func=lambda df: pd.DataFrame({'pct_change_val': df['value'].pct_change()}))
+
+# def test_op_array_all():
+#     run_test_case(
+#         op_name='ArrayAll',
+#         data=pd.DataFrame({'values': [[True, True], [True, False], [False, False]]}),
+#         ibis_expr_func=lambda t: t.select(all_true=t.values.all()),
+#         pandas_expr_func=lambda df: pd.DataFrame({'all_true': df['values'].apply(all)}))
+
+# def test_op_is_nan():
+#     run_test_case(
+#         op_name='IsNan',
+#         data=pd.DataFrame({'value': [1.0, float('inf'), -float('inf'), np.nan]}),
+#         ibis_expr_func=lambda t: t.select(is_nan=t.value.isnan()),
+#         pandas_expr_func=lambda df: pd.DataFrame({'is_nan': np.isnan(df['value'])}))
+
+# def test_op_array_concat():
+#     run_test_case(
+#         op_name='ArrayConcat',
+#         data=pd.DataFrame({'arr1': [[1, 2], [3]], 'arr2': [[4], [5, 6]]}),
+#         ibis_expr_func=lambda t: t.select(concatenated=t.arr1.concat(t.arr2)),
+#         pandas_expr_func=lambda df: pd.DataFrame({'concatenated': df.apply(lambda row: row['arr1'] + row['arr2'], axis=1)}))
