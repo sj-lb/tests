@@ -100,7 +100,7 @@ def run_test_case(op_name, data: pd.DataFrame, ibis_expr_func, pandas_expr_func)
                     ibis_result_df[col] = ibis_result_df[col].dt.tz_localize('UTC')
                 except:
                     pass
-                expected_df[col] = expected_df[col].astype(ibis_result_df[col].dtype)
+                ibis_result_df[col] = ibis_result_df[col].astype(expected_df[col].dtype)
 
         logging.info("Ibis Result:\n%s", ibis_result_df)
         logging.info("Pandas Expected Result:\n%s", expected_df)
@@ -244,14 +244,14 @@ def test_op_approx_quantile():
         data=pd.DataFrame({'value': list(range(1, 101))}),
         ibis_expr_func=lambda t: t.aggregate(approx_q=t.value.approx_quantile(0.5)),
         pandas_expr_func=lambda df: pd.DataFrame({'approx_q': [df['value'].quantile(0.5)]}))
-@pytest.mark.skip(reason='query wrapped in redundant select')
+# @pytest.mark.skip(reason='query wrapped in redundant select')
 def test_op_arg_max():
     run_test_case(
         op_name='ArgMax',
         data=pd.DataFrame({'id': [1, 2, 3, 4], 'value': [10, 50, 20, 30]}),
         ibis_expr_func=lambda t: t.aggregate(id_at_max=t.id.argmax(t.value)),
         pandas_expr_func=lambda df: pd.DataFrame({'id_at_max': [df.loc[df['value'].idxmax(), 'id']]}))
-@pytest.mark.skip(reason='query wrapped in redundant select')
+# @pytest.mark.skip(reason='query wrapped in redundant select')
 def test_op_arg_min():
     run_test_case(
         op_name='ArgMin',
@@ -413,11 +413,10 @@ def test_op_cast():
         data=pd.DataFrame({'value': [1, 2, 3], 'float_val': [1.1, 2.2, 3.3]}),
         ibis_expr_func=lambda t: t.select(str_val=t.value.cast('string'), int_val=t.float_val.cast('int32')),
         pandas_expr_func=lambda df: pd.DataFrame({'str_val': df['value'].astype(str), 'int_val': df['float_val'].astype(np.int32)}))
-@pytest.mark.skip(reason='least and greatest not supported in SQream')
 def test_op_clip():
     run_test_case(
         op_name='Clip',
-        data=pd.DataFrame({'value': [-5, 0, 10, 15]}),
+        data=pd.DataFrame({'value': [-5, 10, 3, 0, 15]}),
         ibis_expr_func=lambda t: t.select(clipped=t.value.clip(lower=0, upper=10)),
         pandas_expr_func=lambda df: pd.DataFrame({'clipped': df['value'].clip(lower=0, upper=10)}))
 def test_op_correlation():
@@ -636,10 +635,7 @@ def test_op_find_in_set():
         data=pd.DataFrame({'haystack': ['a,b,c', 'x,y'], 'needle': ['b', 'z']}),
         ibis_expr_func=lambda t: t.select(found=ibis.literal(',').join([t.haystack]).find_in_set(t.needle)), # This Ibis expression might vary
         pandas_expr_func=lambda df: pd.DataFrame({'found': df.apply(lambda row: (row['needle'] in row['haystack'].split(',')) if pd.notna(row['haystack']) else False, axis=1)}))
-# SELECT (SELECT SELECT (SELECT "t0"."value" FROM "ibis_test_first" AS "t0" ORDER BY "t0"."value" NULLS LAST LIMIT 1) AS "first_val" FROM "ibis_test_first" AS "t0";
-# ERROR: expected response statementPrepared but got:
-# {"error":"Scalar sub-queries are not supported"}
-@pytest.mark.skip(reason='query wrapped in redundant select')
+@pytest.mark.skip(reason='first is meaningless when the table is not ordered')
 def test_op_first():
     run_test_case(
         op_name='First',
@@ -762,7 +758,7 @@ def test_op_json_get_item():
         pandas_expr_func=lambda df: pd.DataFrame({
             'item_a': df['json_data'].apply(lambda x: int(eval(x)['a']) if pd.notna(x) and 'a' in eval(x) else np.nan), # eval is dangerous, use json.loads in real code
             'item_b': df['json_data'].apply(lambda x: eval(x)['b'] if pd.notna(x) and 'b' in eval(x) else np.nan)}))
-@pytest.mark.skip(reason='SQreamError: Scalar sub-queries are not supported')
+@pytest.mark.skip(reason='last is meaningless when the table is not ordered')
 def test_op_last():
     run_test_case(
         op_name='Last',
@@ -912,12 +908,6 @@ def test_op_modulus():
         data=pd.DataFrame({'a': [10, 7, 5], 'b': [3, 2, 5]}),
         ibis_expr_func=lambda t: t.select(mod_result=t.a % t.b),
         pandas_expr_func=lambda df: pd.DataFrame({'mod_result': df['a'] % df['b']}))
-# SELECT (PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY "t0"."value"), PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY "t0"."value"), PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY "t0"."value")) AS "quantiles" FROM "ibis_test_multiquantile" AS "t0";
-# Internal compiler error:
-# Error at RelationalAlgebra phase during Convert
-# Invalid function in stringToScalarFun: '!rowctor'
-# NOTE: it works without parentheses
-@pytest.mark.skip(reason='SQreamError: Internal compiler error (redundant parentheses)')
 def test_op_multi_quantile():
     run_test_case(
         op_name='MultiQuantile',

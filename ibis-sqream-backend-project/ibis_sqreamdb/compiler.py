@@ -62,34 +62,10 @@ class SqreamCompiler(SQLGlotCompiler):
         ops.ApproxMedian,
         ops.ApproxMultiQuantile,
         ops.ApproxQuantile,
-        # ops.Array,
-        # ops.ArrayAll,
-        # ops.ArrayAny,
-        # ops.ArrayCollect,
-        # ops.ArrayConcat,
-        # ops.ArrayContains,
-        # ops.ArrayDistinct,
-        # ops.ArrayFilter,
-        # ops.ArrayIndex,
-        # ops.ArrayIntersect,
-        # ops.ArrayMap,
-        # ops.ArrayMax,
-        # ops.ArrayMean,
-        # ops.ArrayMin,
-        # ops.ArrayMode,
-        # ops.ArrayPosition,
-        # ops.ArrayRepeat,
-        # ops.ArraySlice,
-        # ops.ArraySort,
-        # ops.ArrayStringJoin,
-        # ops.ArraySum,
-        # ops.ArrayUnion,
-        ops.Clip,
         ops.ExtractIsoYear,
         ops.ExtractMicrosecond,
         ops.FindInSet,
         ops.Greatest,
-        ops.Least,
         ops.Levenshtein,
         ops.JSONGetItem,
         ops.UnwrapJSONBoolean,
@@ -98,38 +74,8 @@ class SqreamCompiler(SQLGlotCompiler):
         ops.UnwrapJSONFloat64,
         ops.IsInf,
         ops.RandomScalar,
-        ops.TimeFromHMS
-        # ops.Levenshtein,
-        # ops.RegexSplit,
-        # ops.StringSplit,
-        # ops.IsNan,
-        # ops.IsInf,
-        # ops.Covariance,
-        # ops.Correlation,
-        # ops.Median,
-        # ops.ApproxMedian,
-        # ops.Array,
-        # ops.ArrayConcat,
-        # ops.ArrayStringJoin,
-        # ops.ArrayContains,
-        # ops.ArrayFlatten,
-        # ops.ArrayLength,
-        # ops.ArraySort,
-        # ops.ArrayStringJoin,
-        # ops.CountDistinctStar,
-        # ops.IntervalBinary,
-        # ops.IntervalAdd,
-        # ops.IntervalSubtract,
-        # ops.IntervalMultiply,
-        # ops.IntervalFloorDivide,
-        # ops.TimestampBucket,
-        # ops.TimestampDiff,
-        # ops.StringToDate,
-        # ops.StringToTimestamp,
-        # ops.StringToTime,
-        # ops.TimeDelta,
-        # ops.TimestampDelta,
-        # ops.TryCast,
+        ops.TimeFromHMS,
+        ops.ArrayZip
     )
 
     SIMPLE_OPS = {
@@ -144,10 +90,13 @@ class SqreamCompiler(SQLGlotCompiler):
         ops.Strip: "trim",
         ops.LStrip: "ltrim",
         ops.RStrip: "rtrim",
-        ops.Unnest: "unnest"
+        ops.Unnest: "unnest",
+        ops.ArrayRemove: "array_remove",
         # ops.First: "top 1"
     }
-
+    
+    def visit_Aggregate(self, op, *, parent, groups, metrics):
+        return next(iter(metrics.values())) if isinstance(next(iter(op.metrics.values())), (ops.ArgMax, ops.ArgMin, ops.Last)) else super().visit_Aggregate(op, parent=parent, groups=groups, metrics=metrics)
     def visit_Date(self, op, *, arg):
         return sge.Cast(this=sge.convert(arg), to=sge.DataType.build('DATE'), copy=False)
     def visit_StringToDate(self, op, *, arg):
@@ -183,46 +132,23 @@ class SqreamCompiler(SQLGlotCompiler):
         return self.agg.max(
             self.cast(arg, dt.Int32(nullable=op.arg.dtype.nullable)),
             where=where)
-    def visit_ArgMaxxxx(self, op: ops.ArgMax, *, arg: sge.Expression, key: sge.Expression, where: sge.Expression | None) -> sge.Expression:
-        table_expr = sge.Table(
+    def visit_ArgMax(self, op, *, arg, key, where):
+        main_table_sqlglot = sge.Table(
             this=sge.Identifier(this=op.arg.rel.name, quoted=True),
             alias=sge.Alias(this=sge.Identifier(this=arg.table, quoted=True)))
-        inner_max_subquery = sge.Select(expressions=[sge.Max(this=key)]).from_(table_expr.copy())
-        if where:
-            inner_max_subquery = inner_max_subquery.where(where)
 
-        scalar_argmax_subquery = sge.Select(expressions=[arg]).from_(table_expr.copy())
-
-        comparison_condition = sge.EQ(this=key, expression=sge.Paren(this=inner_max_subquery))
-
-        if where:
-            scalar_argmax_subquery = scalar_argmax_subquery.where(sge.And(where, comparison_condition))
-        else:
-            scalar_argmax_subquery = scalar_argmax_subquery.where(comparison_condition)
-
-        scalar_argmax_subquery = scalar_argmax_subquery.order_by(
-            sge.Ordered(this=arg, desc=False)) # .order_by() takes Ordered expressions directly).limit(sge.Literal.number(1)
-
-        return sge.Paren(this=scalar_argmax_subquery)
-
-    def visit_ArgMax(self, op: ops.ArgMax, *, arg: sge.Expression, key: sge.Expression, where: sge.Expression | None) -> sge.Expression:
-        ibis_table_rel = op.arg.rel
-
-        main_table_sqlglot = sge.Table(
-            this=sge.Identifier(this=ibis_table_rel.name, quoted=True),
-            alias=sge.Alias(this=sge.Identifier(this=arg.table, quoted=True)))
-
-        inner_max_subquery = sge.Paren(this=sge.Select(expressions=[sge.Max(this=key).as_("max_val")]).from_(main_table_sqlglot.copy()))
-        aliased_inner_max_subquery = inner_max_subquery.as_("t1")
+        inner_max_subquery = sge.Select(expressions=[sge.Max(this=key).as_("max_val")]).from_(main_table_sqlglot.copy())
+        aliased_inner_max_subquery = sge.Paren(this=inner_max_subquery).as_("t1", quoted=True)
 
         join_condition = sge.EQ(
             this=key,
-            expression=sge.Column(this=sge.Identifier(this="max_val", quoted=True), table=sge.Identifier(this="t1", quoted=True)))
+            expression=sge.Column(
+                this=sge.Identifier(this="max_val", quoted=True),
+                table=sge.Identifier(this="t1", quoted=True)))
 
         final_query = sge.Select(expressions=[arg]).from_(main_table_sqlglot)
         final_query = final_query.join(aliased_inner_max_subquery, on=join_condition)
-        
-        return sge.Paren(this=final_query.where(where) if where else final_query)
+        return final_query.where(where) if where else final_query
     def visit_ArgMin(self, op: ops.ArgMax, *, arg: sge.Expression, key: sge.Expression, where: sge.Expression | None) -> sge.Expression:
         ibis_table_rel = op.arg.rel
 
@@ -298,6 +224,15 @@ class SqreamCompiler(SQLGlotCompiler):
         return self.f.left(concatenated_string, length)
     def visit_RPad(self, op, *, arg, length, pad):
         return self._rpad_sql(arg, length, pad)
+    def visit_Clip(self, op, *, arg, lower, upper):
+        ifs = []
+        if upper is not None:
+            upper = self.cast(upper, op.arg.dtype)
+            ifs.append(self.if_(sge.GT(this=arg, expression=upper), upper))
+        if lower is not None:
+            lower = self.cast(lower, op.arg.dtype)
+            ifs.append(self.if_(sge.LT(this=arg, expression=lower), lower))
+        return sge.Case(ifs=ifs, default=arg) if ifs else arg
     def visit_DateFromYMD(self, op, *, year, month, day):
         year_str = sge.Cast(this=year, to=sge.DataType.build('TEXT'))
         month_str = sge.Cast(this=month, to=sge.DataType.build('TEXT'))
@@ -391,21 +326,6 @@ class SqreamCompiler(SQLGlotCompiler):
             ifs={self.if_(condition=sge.Literal.number(0), true=sge.Identifier(this='NULL'))},
             default=substring_expression) # ELSE substring_expression
     def visit_First(self, op, *, arg, order_by, include_null, where):
-        # if where:
-        #     arg = arg.where(where)
-        # subquery_order_by_list = []
-        # if order_by:
-        #     for i, order_expr_sqlglot in enumerate(order_by):
-        #         ibis_order_op = op.order_by[i]
-        #         is_desc = isinstance(ibis_order_op, ops.SortKey) and ibis_order_op.descending
-        #         subquery_order_by_list.append(sge.Ordered(this=order_expr_sqlglot, desc=is_desc))
-        # else:
-        #     subquery_order_by_list.append(sge.Ordered(this=arg))
-        # if subquery_order_by_list:
-        #     arg = arg.order_by(*subquery_order_by_list)
-        # return sge.func('TOP 1', arg)
-        
-        
         subquery_select_list = [arg] # The column to select in the subquery
 
         subquery_order_by_list = []
@@ -427,23 +347,11 @@ class SqreamCompiler(SQLGlotCompiler):
         
         if subquery_order_by_list:
             subquery = subquery.order_by(*subquery_order_by_list)
-        # return sge.Paren(this=subquery.limit(sge.Literal.number(1)))
         return sge.func('TOP 1', subquery)
-        # if include_null == False:
-        #     where += f' AND {arg} NOT NULL' if where else f'{arg} NOT NULL'
-        # if where:
-        #     arg = arg.where(where)
-        # subquery_order_by_list = []
-        # if order_by:
-        #     for i, order_expr_sqlglot in enumerate(order_by):
-        #         ibis_order_op = op.order_by[i]
-        #         is_desc = isinstance(ibis_order_op, ops.SortKey) and ibis_order_op.descending
-        #         subquery_order_by_list.append(sge.Ordered(this=order_expr_sqlglot, desc=is_desc))
-        # else:
-        #     subquery_order_by_list.append(sge.Ordered(this=arg))
-        # if subquery_order_by_list:
-        #     arg = arg.order_by(*subquery_order_by_list)
-        # return sge.func('TOP 1', arg)
+    def visit_Arbitrary(self, op, *, arg, where):
+        ret = sge.Select(expressions=[sge.func('top 1', arg)])
+        # return ret.where(where) if where else ret
+        return sge.func('top 1', arg)
     def visit_Last(self, op, *, arg, where, order_by=None, include_null=True, **kwargs):
         subquery_select_list = [arg] # Select the argument column
 
@@ -454,7 +362,7 @@ class SqreamCompiler(SQLGlotCompiler):
                 is_desc = isinstance(ibis_order_op, ops.SortKey) and ibis_order_op.descending
                 subquery_order_by_list.append(sge.Ordered(this=order_expr_sqlglot, desc=is_desc))
         else:
-            subquery_order_by_list.append(sge.Ordered(this=arg, desc=True)) # Default to DESC for last
+            raise com.UnsupportedOperationError('last is meaningless when the table is not ordered')
 
         from_expr = sge.Table(
             this=sge.Identifier(this=op.arg.rel.name, quoted=True),
@@ -468,7 +376,11 @@ class SqreamCompiler(SQLGlotCompiler):
         if subquery_order_by_list:
             subquery = subquery.order_by(*subquery_order_by_list)
 
-        return sge.Paren(this=subquery.limit(sge.Literal.number(1)))
+        return subquery.limit(sge.Literal.number(1))
+    def visit_Least(self, op, *, arg):
+        return sge.Select(expressions=[arg]).order_by(sge.Ordered(this=arg, desc=False)).limit(sge.Literal.number(1))
+    def visit_Greatest(self, op, *, arg):
+        return sge.Select(expressions=[arg]).order_by(sge.Ordered(this=arg, desc=True)).limit(sge.Literal.number(1))
     def visit_IdenticalTo(self, op, *, left, right):
         equals_expr = sge.Paren(this=sge.EQ(this=left, expression=right))
 
@@ -483,18 +395,18 @@ class SqreamCompiler(SQLGlotCompiler):
             expression=sge.Order(expressions=[arg]))
 
         return sge.Filter(this=qtl_expr, expression=where) if where else qtl_expr
-    def visit_Median(self, op, *, arg, where=None):
-        return self.quantile_impl(arg=arg, quantile=sge.Literal.number(0.5), where=where)
-    def visit_Quantile(self, op, *, arg, quantile, where=None):
+    def visit_Quantile(self, op, *, arg, quantile, where):
         return self.quantile_impl(arg=arg, quantile=quantile.this, where=where)
-    def visit_MultiQuantile(self, op, *, arg, quantile, where=None):
+    def visit_Median(self, op, *, arg, where):
+        return self.quantile_impl(arg=arg, quantile=sge.Literal.number(0.5), where=where)
+    def visit_MultiQuantile(self, op, *, arg, quantile, where):
         quantile_expressions = []
         for q_ibis_op in quantile:
             quantile_expressions.append(self.quantile_impl(
                 arg=arg,
                 quantile=q_ibis_op,
                 where=where))
-        return quantile_expressions
+        return sge.Array(expressions=quantile_expressions)
     def visit_IsNan(self, op, *, arg):
         return arg.is_(NULL)
     def visit_Mode(self, op, *, arg, where):
@@ -612,5 +524,16 @@ class SqreamCompiler(SQLGlotCompiler):
         if interval.args['this'] != sge.Literal.string('1'):
             raise com.UnsupportedOperationError(f"Unsupported truncate unit: {interval}")
         return self.f.trunc(arg, interval.args['unit'])
-    def visit_PctChange(self, op, *, arg):
-        print('PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP')
+    def visit_GroupConcat(self, op, *, arg):
+        pass
+    def visit_FindInSet(self, op, *, needle, values):
+        return self.f.coalesce(
+            self.f.array_position(self.f.array(*values), needle),
+            0,
+        )
+    def visit_ArrayMax(self, op, *, arg):
+        return sge.func(
+            sge.Dot(
+                this=sge.Identifier(this='m_internal', quoted=False),
+                expression=sge.Identifier(this='array_max', quoted=False)),
+            arg)

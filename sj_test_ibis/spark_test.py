@@ -11,9 +11,9 @@ import traceback
 # Use the direct connect function that is known to work
 from ibis_sqreamdb import connect
 from crcmod.predefined import mkCrcFun # requires python3.11 -m pip install crcmod
+import ibis.expr.datatypes as dt
 
 # from ibis import datatypes as dt # Import datatypes
-
 
 HOST = os.environ.get("IBIS_SQREAM_HOST", "127.0.0.1")
 PORT = int(os.environ.get("IBIS_SQREAM_PORT", 5000))
@@ -91,9 +91,9 @@ def run_test_case(op_name, data: pd.DataFrame, ibis_expr_func, pandas_expr_func)
 
         # Standardize dataframes for robust comparison
         if isinstance(ibis_result_df, pd.Series):
-            ibis_result_df = ibis_result_df.to_frame()
+            ibis_result_df = ibis_result_df.to_frame().reset_index(drop=True)
         if isinstance(expected_df, pd.Series):
-            expected_df = expected_df.to_frame()
+            expected_df = expected_df.to_frame().reset_index(drop=True)
 
         for col in expected_df.columns:
             if col in ibis_result_df.columns:
@@ -103,8 +103,6 @@ def run_test_case(op_name, data: pd.DataFrame, ibis_expr_func, pandas_expr_func)
                 except:
                     pass
                 ibis_result_df[col] = ibis_result_df[col].astype(expected_df[col].dtype)
-        expected_df = expected_df.reset_index(drop=True)
-        ibis_result_df = ibis_result_df.reset_index(drop=True)
         print(f'\033[32;1mibis result:\033[33m\n{ibis_result_df}\033[32m\nexpected result:\033[33m\n{expected_df}\033[m')
         logging.info("Ibis Result:\n%s", ibis_result_df)
         logging.info("Pandas Expected Result:\n%s", expected_df)
@@ -205,103 +203,156 @@ def run_test_case2(op_name, data: dict[str, pd.DataFrame], ibis_expr_func, panda
             except Exception as e:
                 logging.error(f"Could not drop table {table_name_to_drop}. Reason: {e}")
 
-# def test_op_arg_max():
-#     run_test_case(
-#         op_name='ArgMax',
-#         data=pd.DataFrame({'id': [1, 2, 3, 4], 'value': [10, 50, 20, 30]}),
-#         ibis_expr_func=lambda t: t.aggregate(id_at_max=t.id.argmax(t.value)),
-#         pandas_expr_func=lambda df: pd.DataFrame({'id_at_max': [df.loc[df['value'].idxmax(), 'id']]}))
+def test_op_arbitrary():
+    run_test_case(
+        op_name='Arbitrary',
+        data=pd.DataFrame({'key': [1, 1, 2, 2], 'value': ['a', 'b', 'c', 'd']}),
+        ibis_expr_func=lambda t: t.group_by('key').aggregate(arbitrary_val=t.value.arbitrary()),
+        pandas_expr_func=lambda df: df.groupby('key', as_index=False).agg(arbitrary_val=('value', lambda x: x.iloc[0])))
 
-# def test_op_find_in_set():
-#     run_test_case(
-#         op_name='FindInSet',
-#         data=pd.DataFrame({'haystack': ['a,b,c', 'x,y'], 'needle': ['b', 'z']}),
-#         ibis_expr_func=lambda t: t.select(found=ibis.literal(',').join([t.haystack]).find_in_set(t.needle)), # This Ibis expression might vary
-#         pandas_expr_func=lambda df: pd.DataFrame({'found': df.apply(lambda row: (row['needle'] in row['haystack'].split(',')) if pd.notna(row['haystack']) else False, axis=1)}))
+def test_op_array_flatten():
+    run_test_case(
+        op_name='ArrayFlatten',
+        data=pd.DataFrame({'nested_arr': [[[1, 2], [3]], [[4, 5]]]}),
+        ibis_expr_func=lambda t: t.select(flattened_arr=t.nested_arr.flatten()),
+        pandas_expr_func=lambda df: pd.DataFrame({'flattened_arr': df['nested_arr'].apply(lambda x: [item for sublist in x for item in sublist])}))
 
+def test_op_array_remove():
+    run_test_case(
+        op_name='ArrayRemove',
+        data=pd.DataFrame({'arr': [[1, 2, 2, 3], [4, 5, 4], [10]]}),
+        ibis_expr_func=lambda t: t.select(cleaned_arr=t.arr.remove(2)),
+        pandas_expr_func=lambda df: pd.DataFrame({'cleaned_arr': df['arr'].apply(lambda x: [elem for elem in x if elem != 2])}))
 
-# def test_op_first():
-#     run_test_case(
-#         op_name='First',
-#         data=pd.DataFrame({'id': [1, 2, 3], 'value': ['a', 'b', 'c']}),
-#         ibis_expr_func=lambda t: t.aggregate(first_val=t.value.first()),
-#         pandas_expr_func=lambda df: pd.DataFrame({'first_val': [df['value'].iloc[0]]}))
+def test_op_array_zip():
+    run_test_case(
+        op_name='ArrayZip',
+        data=pd.DataFrame({'arr1': [[1, 2], [3, 4]], 'arr2': [['a', 'b'], ['c', 'd']]}),
+        ibis_expr_func=lambda t: t.select(zipped_arr=t.arr1.array_zip(t.arr2)),
+        pandas_expr_func=lambda df: pd.DataFrame({'zipped_arr': df.apply(lambda row: list(zip(row['arr1'], row['arr2'])), axis=1)}))
 
-# def test_op_last():
-#     run_test_case(
-#         op_name='Last',
-#         data=pd.DataFrame({'id': [1, 2, 3], 'value': [100.1, 10.2, 1.3]}),
-#         ibis_expr_func=lambda t: t.aggregate(last_val=t.value.last()),
-#         pandas_expr_func=lambda df: pd.DataFrame({'last_val': [df['value'].iloc[-1]]}))
+def test_op_field():
+    run_test_case(
+        op_name='Field',
+        data=pd.DataFrame({'struct_col': [{'a': 1, 'b': 'x'}, {'a': 2, 'b': 'y'}]}),
+        ibis_expr_func=lambda t: t.select(extracted_field=t.struct_col.field('a')),
+        pandas_expr_func=lambda df: pd.DataFrame({'extracted_field': df['struct_col'].apply(lambda x: x['a'])}))
+        # ibis_schema=ibis.schema({'struct_col': dt.Struct({'a': dt.int64, 'b': dt.string})}))
 
-# def test_op_group_concat():
-#     run_test_case(
-#         op_name='GroupConcat',
-#         data=pd.DataFrame({'group_col': ['A', 'A', 'B', 'B'], 'value': ['foo', 'bar', 'baz', 'qux']}),
-#         ibis_expr_func=lambda t: t.group_by('group_col').aggregate(concatenated=t.value.group_concat(', ')),
-#         pandas_expr_func=lambda df: df.groupby('group_col', as_index=False)['value'].apply(lambda x: ', '.join(x)).reset_index())
+def test_op_first_value():
+    run_test_case(
+        op_name='FirstValue',
+        data=pd.DataFrame({'key': [1, 1, 2, 2], 'value': [10, 20, 30, 40], 'order_col': [1, 2, 1, 2]}),
+        ibis_expr_func=lambda t: t.group_by('key').order_by('order_col').select(first_val=t.value.first()),
+        pandas_expr_func=lambda df: df.sort_values('order_col').groupby('key', as_index=False)['value'].transform(lambda x: x.iloc[0]).to_frame('first_val'))
+@pytest.mark.skip(reason='not supported in SQream')
+def test_op_in_subquery():
+    sub_df = pd.DataFrame({'allowed_fruit': ['apple', 'cherry']})
 
-# def test_op_range():
-#     start_val, end_val = 0, 5
-#     run_test_case(
-#         op_name='RangeFloat',
-#         data=pd.DataFrame({'value': []}, dtype=np.int32), # Just for schema and expected df
-#         ibis_expr_func=lambda t: ibis.range(start_val, end_val + 1, 1),
-#         pandas_expr_func=lambda df: pd.DataFrame({'value': np.arange(start_val, end_val + 1)}))
+    run_test_case(
+        op_name='InSubquery',
+        data=pd.DataFrame({'id': [1, 2, 3, 4], 'value': ['apple', 'banana', 'cherry', 'date']}),
+        ibis_expr_func=lambda t: t.select(is_allowed=t.value.isin(ibis.memtable(sub_df).allowed_fruit)),
+        pandas_expr_func=lambda df: pd.DataFrame({'is_allowed': df['value'].isin(sub_df['allowed_fruit'])}))
 
-# def test_op_timestamp_bucket():
-#     run_test_case(
-#         op_name='TimestampBucket',
-#         data=pd.DataFrame({'ts': pd.to_datetime(['2023-01-01 10:05:00', '2023-01-01 10:15:00', '2023-01-01 10:25:00'])}, dtype='datetime64[ms]'),
-#         ibis_expr_func=lambda t: t.select(bucket=t.ts.bucket(ibis.interval(10, 'm'))),
-#         pandas_expr_func=lambda df: pd.DataFrame({'bucket': df['ts'].dt.floor('10min')}))
+def test_op_interval_from_integer():
+    run_test_case(
+        op_name='IntervalFromInteger',
+        data=pd.DataFrame({'date_col': pd.to_datetime(['2023-01-01', '2023-01-01', '2023-01-01']), 'days_val': [5, -3, 0]}),
+        ibis_expr_func=lambda t: t.select(new_date=t.date_col + t.days_val.as_interval('D')),
+        pandas_expr_func=lambda df: pd.DataFrame({'new_date': df['date_col'] + pd.to_timedelta(df['days_val'], unit='D')}))
 
-# def test_op_integer_range():
-#     start_val, end_val = 1, 5
-#     run_test_case(
-#         op_name='IntegerRange',
-#         data=pd.DataFrame({'value': []}, dtype=np.int32),
-#         ibis_expr_func=lambda t, ibis_con: ibis_con.insert(t.op().name, obj=ibis.range(start_val, end_val + 1).to_pandas()),
-#         pandas_expr_func=lambda df: pd.DataFrame({'value': range(start_val, end_val + 1)}))
+def test_op_last_value():
+    run_test_case(
+        op_name='LastValue',
+        data=pd.DataFrame({'key': [1, 1, 2, 2], 'value': [10, 20, 30, 40], 'order_col': [1, 2, 1, 2]}),
+        # LAST_VALUE as a window function requires an ORDER BY.
+        ibis_expr_func=lambda t: t.group_by('key').order_by('order_col').select(last_val=t.value.last()),
+        pandas_expr_func=lambda df: df.sort_values('order_col').groupby('key', as_index=False)['value'].transform(lambda x: x.iloc[-1]).to_frame('last_val'))
 
-# def test_op_pct_change():
-#     run_test_case(
-#         op_name='PctChange',
-#         data=pd.DataFrame({'value': [10.0, 20.0, 15.0, 5.0, 0.0, 10.0, np.nan, 5.0, 0.0, 0.0, 20.0]}),
-#         ibis_expr_func=lambda t: t.select(pct_change_val=(t.value - t.value.lag()) / t.value.lag()),
-#         pandas_expr_func=lambda df: pd.DataFrame({'pct_change_val': df['value'].pct_change()}))
+def test_op_lstrip():
+    run_test_case(
+        op_name='LStrip',
+        data=pd.DataFrame({'s': ['  hello', 'world  ', '  foo bar  ']}),
+        ibis_expr_func=lambda t: t.select(stripped_s=t.s.lstrip()),
+        pandas_expr_func=lambda df: pd.DataFrame({'stripped_s': df['s'].str.lstrip()}))
 
-# def test_op_array_all():
-#     run_test_case(
-#         op_name='ArrayAll',
-#         data=pd.DataFrame({'values': [[True, True], [True, False], [False, False]]}),
-#         ibis_expr_func=lambda t: t.select(all_true=t.values.all()),
-#         pandas_expr_func=lambda df: pd.DataFrame({'all_true': df['values'].apply(all)}))
+def test_op_map_contains():
+    run_test_case(
+        op_name='MapContains',
+        data=pd.DataFrame({'map_col': [{'a': 1, 'b': 2}, {'c': 3, 'd': 4}, {}, None]}),
+        ibis_expr_func=lambda t: t.select(has_key_a=t.map_col.contains('a')),
+        pandas_expr_func=lambda df: pd.DataFrame({'has_key_a': df['map_col'].apply(lambda x: 'a' in x if x is not None else None)}))
 
-# def test_op_array_concat():
-#     run_test_case(
-#         op_name='ArrayConcat',
-#         data=pd.DataFrame({'arr1': [[1, 2], [3]], 'arr2': [[4], [5, 6]]}),
-#         ibis_expr_func=lambda t: t.select(concatenated=t.arr1.concat(t.arr2)),
-#         pandas_expr_func=lambda df: pd.DataFrame({'concatenated': df.apply(lambda row: row['arr1'] + row['arr2'], axis=1)}))
+def test_op_non_null_literal():
+    run_test_case(
+        op_name='NonNullLiteral',
+        data=pd.DataFrame({'dummy': [1]}),
+        ibis_expr_func=lambda t: t.select(ibis.literal("hello").notnull().name('is_not_null')),
+        pandas_expr_func=lambda df: pd.DataFrame({'is_not_null': pd.notna(['hello'])}))
 
-# def test_op_least():
-#     run_test_case(
-#         op_name='Least',
-#         data=pd.DataFrame({'a': [1, 5, 3], 'b': [4, 2, 6], 'c': [7, 1, 5]}),
-#         ibis_expr_func=lambda t: t.select(min_val=ibis.least(t.a, t.b, t.c)),
-#         pandas_expr_func=lambda df: pd.DataFrame({'min_val': df[['a', 'b', 'c']].min(axis=1)}))
+def test_op_not_null():
+    run_test_case(
+        op_name='NotNull',
+        data=pd.DataFrame({'val': [1, None, 3, np.nan, 5]}),
+        ibis_expr_func=lambda t: t.select(is_not_null=t.val.notnull()),
+        pandas_expr_func=lambda df: pd.DataFrame({'is_not_null': df['val'].notna()}))
 
-# def test_op_window_function():
-#     run_test_case(
-#         op_name='WindowFunction',
-#         data=pd.DataFrame({'key': ['A', 'A', 'B', 'B'], 'value': [10, 20, 30, 10]}),
-#         ibis_expr_func=lambda t: t.select(key=t.key, value=t.value, rank_val=t.value.rank().over(ibis.window(group_by='key', order_by='value'))),
-#         pandas_expr_func=lambda df: df.assign(rank_val=df.groupby('key')['value'].rank(method='min').astype(int))) # method='min' for SQL RANK() behavior
+def test_op_rstrip():
+    run_test_case(
+        op_name='RStrip',
+        data=pd.DataFrame({'s': ['  hello', 'world  ', '  foo bar  ']}),
+        ibis_expr_func=lambda t: t.select(stripped_s=t.s.rstrip()),
+        pandas_expr_func=lambda df: pd.DataFrame({'stripped_s': df['s'].str.rstrip()}))
 
-# def test_op_arbitrary():
-#     run_test_case(
-#         op_name='Arbitrary',
-#         data=pd.DataFrame({'key': [1, 1, 2, 2], 'value': ['a', 'b', 'c', 'd']}),
-#         ibis_expr_func=lambda t: t.group_by('key').aggregate(arbitrary_val=t.value.arbitrary()),
-#         pandas_expr_func=lambda df: df.groupby('key', as_index=False).agg(arbitrary_val=('value', lambda x: x.iloc[0])))
+def test_op_time():
+    run_test_case(
+        op_name='Time',
+        data=pd.DataFrame({'ts_col': pd.to_datetime(['2023-07-20 10:30:15', '2023-07-20 00:00:00', '2023-07-20 23:59:59'])}),
+        ibis_expr_func=lambda t: t.select(time_val=t.ts_col.time()),
+        pandas_expr_func=lambda df: pd.DataFrame({'time_val': df['ts_col'].dt.time}))
+
+def test_op_time_timestamp_range():
+    start_ts = pd.Timestamp('2000-01-01 00:00:00')
+    end_ts = pd.Timestamp('2000-01-01 03:00:00')
+    interval_step = ibis.interval(hours=1)
+
+    expected_range = pd.date_range(start=start_ts, end=end_ts - pd.Timedelta(seconds=1), freq='h')
+
+    run_test_case(
+        op_name='TimeTimestampRange',
+        data=pd.DataFrame({'value': []}),
+        ibis_expr_func=lambda t: ibis.range(start_ts, end_ts, interval_step).unnest().name('value').to_table(),
+        pandas_expr_func=lambda df: pd.DataFrame({'value': expected_range}))
+
+def test_op_timestamp_truncate():
+    run_test_case(
+        op_name='TimestampTruncate',
+        data=pd.DataFrame({'ts_col': pd.to_datetime(['2023-05-15 14:35:10.123', '2024-01-01 00:00:00.000'])}),
+        ibis_expr_func=lambda t: t.select(truncated_hour=t.ts_col.truncate('hour')),
+        pandas_expr_func=lambda df: pd.DataFrame({'truncated_hour': df['ts_col'].dt.floor('h')}))
+
+@ibis.udf.scalar.builtin
+def multiply_by_two(x: float) -> float:
+    return x * 2
+
+def test_op_vectorized_udf():
+    run_test_case(
+        op_name='VectorizedUDF',
+        data=pd.DataFrame({'value': [1.0, 2.5, 3.0]}),
+        ibis_expr_func=lambda t: t.select(doubled_val=multiply_by_two(t.value)),
+        pandas_expr_func=lambda df: pd.DataFrame({'doubled_val': df['value'] * 2}))
+
+def test_op_window_aggregate():
+    run_test_case(
+        op_name='WindowAggregate',
+        data=pd.DataFrame({'key': [1, 1, 2, 2], 'value': [10, 20, 30, 40]}),
+        ibis_expr_func=lambda t: t.select(key=t.key, value=t.value, sum_over_key=t.value.sum().over(ibis.window(group_by='key'))),
+        pandas_expr_func=lambda df: df.assign(sum_over_key=df.groupby('key')['value'].transform('sum')))
+
+def test_op_window_function():
+    run_test_case(
+        op_name='WindowFunction',
+        data=pd.DataFrame({'key': ['A', 'A', 'B', 'B'], 'value': [10, 20, 30, 10]}),
+        ibis_expr_func=lambda t: t.select(key=t.key, value=t.value, rank_val=t.value.rank().over(ibis.window(group_by='key', order_by='value'))),
+        pandas_expr_func=lambda df: df.assign(rank_val=df.groupby('key')['value'].rank(method='min').astype(int))) # method='min' for SQL RANK() behavior

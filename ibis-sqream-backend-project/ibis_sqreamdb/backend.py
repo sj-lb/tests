@@ -23,10 +23,12 @@ from .dialect import SQreamDialect
 
 logger = logging.getLogger("ibis.sqream")
 import ibis.backends.sql.compilers as sc
+
 class Backend(SQLBackend):
     name = 'sqream'
     compiler = SqreamCompiler()
     dialect = SQreamDialect()
+    pymods_entries = None
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -177,6 +179,11 @@ class Backend(SQLBackend):
             self.insert(name, obj, schema=database, overwrite=False)
             
         return self.table(name, database=database)
+    def create_pymods(self, name):
+        entry = f'[name=\'{name}\', arguments=[int[]], returns scalar int, gpu=true]'
+        self.pymods_entries = ', '.join([self.pymods_entries, entry]) if self.pymods_entries else entry
+        with self._safe_raw_sql(f"CREATE OR REPLACE MODULE m_internal OPTIONS(PATH='...', entry_points=[{self.pymods_entries}]);"):
+            pass
     def drop_table(self, name: str, *, schema: str | None = None, force: bool = False) -> None:
         drop_stmt = sg.exp.Drop(
             kind="TABLE", this=sg.table(name, db=schema, quoted=self.compiler.quoted), exists=force
@@ -255,3 +262,12 @@ class Backend(SQLBackend):
                     logger.error("Insert failed.", exc_info=True)
                     print(f'\033[31mERROR ENCOUNTERED, PRINTING TRACEBACK:\033[m\n{traceback.format_exc()}')
                     raise e
+
+    def execute(self, expr, params, limit, **kwargs):
+        if any(isinstance(node, ops.ArrayMax) for node in expr.op().find_all(ops.ArrayMax)):
+            try:
+                self.create_pymods('array_max')
+            except Exception as e:
+                logger.error('failed to create module for array_max', exc_info=True)
+                raise com.IbisError("Failed to set up ArrayMax UDF: " + str(e))
+        return super().execute(expr, params, limit, **kwargs)

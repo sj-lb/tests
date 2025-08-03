@@ -19,9 +19,10 @@ class SQreamDialect(Dialect):
         }
 
     class Generator(Generator):
-        # Specifies how AST nodes, i.e. subclasses of exp.Expression, should be converted into SQL
+        NULL_ORDERING_SUPPORTED = False
+        
         TRANSFORMS = {
-            exp.Array: lambda self, e: f"[{self.expressions(e)}]",
+            exp.Array: lambda self, e: f"ARRAY[{self.expressions(e)}]",
         }
 
         # Specifies how AST nodes representing data types should be converted into SQL
@@ -42,6 +43,17 @@ class SQreamDialect(Dialect):
                     return f"{self.expressions(expression, flat=True)}[{values}]"
                 return 'ARRAY'
             return super().datatype_sql(expression)
+        def ordered_sql(self, expression: exp.Ordered) -> str:
+            desc = expression.args.get("desc")
+
+            this = self.sql(expression, "this")
+
+            sort_order = " DESC" if desc else (" ASC" if desc is False else "")
+
+            with_fill = self.sql(expression, "with_fill")
+            with_fill = f" {with_fill}" if with_fill else ""
+
+            return f"{this}{sort_order}{with_fill}"
 
     class Parser(Parser):
         FUNCTIONS = {
