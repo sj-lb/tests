@@ -255,27 +255,27 @@ class SqreamCompiler(SQLGlotCompiler):
                 sge.Cast(this=year, to=sge.DataType.build('TEXT')),
                 sge.Literal.string('-'),
                 self._lpad_sql(
-                    arg=sge.Cast(this=month, to=sge.DataType.build('TEXT')),
+                    arg=month,
                     length= sge.Literal.number(2),
                     pad=sge.Literal.string('0')),
                 sge.Literal.string('-'),
                 self._lpad_sql(
-                    arg=sge.Cast(this=day, to=sge.DataType.build('TEXT')),
+                    arg=day,
                     length= sge.Literal.number(2),
                     pad=sge.Literal.string('0')),
                 sge.Literal.string(' '),
                 self._lpad_sql(
-                    arg=sge.Cast(this=hours, to=sge.DataType.build('TEXT')),
+                    arg=hours,
                     length= sge.Literal.number(2),
                     pad=sge.Literal.string('0')),
                 sge.Literal.string(':'),
                 self._lpad_sql(
-                    arg=sge.Cast(this=minutes, to=sge.DataType.build('TEXT')),
+                    arg=minutes,
                     length= sge.Literal.number(2),
                     pad=sge.Literal.string('0')),
                 sge.Literal.string(':'),
                 self._lpad_sql(
-                    arg=sge.Cast(this=seconds, to=sge.DataType.build('TEXT')),
+                    arg=seconds,
                     length= sge.Literal.number(2),
                     pad=sge.Literal.string('0')),),
             to=sge.DataType.build('TIMESTAMP'))
