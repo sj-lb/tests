@@ -24,6 +24,14 @@ from .dialect import SQreamDialect
 logger = logging.getLogger("ibis.sqream")
 import ibis.backends.sql.compilers as sc
 
+pymods_names = {
+    ops.ArrayMax: 'array_max',
+    ops.ArrayMin: 'array_min',
+    ops.ArrayMean: 'array_mean',
+    ops.ArraySum: 'array_sum',
+    ops.ArraySort: 'array_sort'
+}
+
 class Backend(SQLBackend):
     name = 'sqream'
     compiler = SqreamCompiler()
@@ -103,17 +111,17 @@ class Backend(SQLBackend):
         table_name: str,
         *,
         database: str | None = None, # <-- FIX: Changed parameter name from 'schema' to 'database'
-        catalog: str | None = None,
+        catalog: str | None = None
     ) -> sch.Schema:
         
         if catalog is not None:
             logger.info("SQreamDB does not support catalogs, the 'catalog' argument will be ignored.")
 
-        query = (
-            sg.select(C.column_name, C.type_name, sge.false())
-            .from_(sg.table('view_sqream_catalog_columns', db='public'))
-            .where(C.table_name.eq(sge.convert(table_name))))
-        
+        # query = (
+        #     sg.select(C.column_name, C.type_name, sge.false())
+        #     .from_(sg.table('view_sqream_catalog_columns', db='public'))
+        #     .where(C.table_name.eq(sge.convert(table_name))))
+        query = (sg.select(sg.func('ibis_tbl_details', sge.convert('public.' + table_name))))
         # The 'database' parameter now correctly matches the variable name
         if database:
             query = query.where(C.table_schema.eq(sge.convert(database)))
@@ -122,12 +130,12 @@ class Backend(SQLBackend):
             rows = cur.fetchall()
         if not rows:
             raise com.TableNotFound(f"Table not found :" + table_name)
-
         names, types, nullables = zip(*rows)
+        nullables = [False if n == '0' else True for n in nullables]
+
         ibis_types = [
             self.compiler.type_mapper.from_string(type_string=t, nullable=n)
-            for t, n in zip(types, nullables)
-        ]
+            for t, n in zip(types, nullables)]
         return sch.Schema(dict(zip(names, ibis_types)))
     def create_table(
         self,
@@ -179,9 +187,10 @@ class Backend(SQLBackend):
             self.insert(name, obj, schema=database, overwrite=False)
             
         return self.table(name, database=database)
-    def create_pymods(self, name):
-        entry = f'[name=\'{name}\', arguments=[int[]], returns scalar int, gpu=true]'
+    def create_pymods(self, name, args, ret):
+        entry = f'[name=\'{name}\', arguments [{", ".join([self.compiler.type_mapper.to_string(t) for t in args])}], returns scalar {self.compiler.type_mapper.to_string(ret)}, gpu=true]'
         self.pymods_entries = ', '.join([self.pymods_entries, entry]) if self.pymods_entries else entry
+        print(f'\033[34;1mENTRIES: \033[33m{self.pymods_entries}\033[m')
         with self._safe_raw_sql(f"CREATE OR REPLACE MODULE m_internal OPTIONS(PATH='...', entry_points=[{self.pymods_entries}]);"):
             pass
     def drop_table(self, name: str, *, schema: str | None = None, force: bool = False) -> None:
@@ -264,10 +273,13 @@ class Backend(SQLBackend):
                     raise e
 
     def execute(self, expr, params, limit, **kwargs):
-        if any(isinstance(node, ops.ArrayMax) for node in expr.op().find_all(ops.ArrayMax)):
-            try:
-                self.create_pymods('array_max')
-            except Exception as e:
-                logger.error('failed to create module for array_max', exc_info=True)
-                raise com.IbisError("Failed to set up ArrayMax UDF: " + str(e))
-        return super().execute(expr, params, limit, **kwargs)
+        for arg in expr.op().args:
+            if isinstance(arg, dict):
+                for a in arg.values():
+                    if isinstance(a, tuple(pymods_names.keys())):
+                        try:
+                            self.create_pymods(name=pymods_names[type(a)], args=[a.arg.dtype], ret=a.dtype)
+                        except Exception as e:
+                            logger.error('failed to create module for array_max', exc_info=True)
+                            raise com.IbisError("Failed to set up ArrayMax UDF: " + str(e))
+        return super().execute(expr, params=params, limit=limit, **kwargs)

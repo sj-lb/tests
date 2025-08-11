@@ -56,6 +56,7 @@ class SqreamCompiler(SQLGlotCompiler):
     dialect = SQreamDialect
     type_mapper = SQreamType
     agg = AggGen(supports_filter=True)
+    pymods_entries = None
 
     UNSUPPORTED_OPS = (
         ops.ApproxCountDistinct,
@@ -92,6 +93,11 @@ class SqreamCompiler(SQLGlotCompiler):
         ops.RStrip: "rtrim",
         ops.Unnest: "unnest",
         ops.ArrayRemove: "array_remove",
+        ops.ArrayMin: "m_internal.array_min",
+        ops.ArrayMean: "m_internal.array_mean",
+        ops.ArrayMax: "m_internal.array_max",
+        ops.ArraySum: "m_internal.array_sum",
+        ops.ArraySort: "m_internal.array_sort",
         # ops.First: "top 1"
     }
     
@@ -531,9 +537,3 @@ class SqreamCompiler(SQLGlotCompiler):
             self.f.array_position(self.f.array(*values), needle),
             0,
         )
-    def visit_ArrayMax(self, op, *, arg):
-        return sge.func(
-            sge.Dot(
-                this=sge.Identifier(this='m_internal', quoted=False),
-                expression=sge.Identifier(this='array_max', quoted=False)),
-            arg)

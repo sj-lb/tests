@@ -322,26 +322,23 @@ def test_op_array_map():
         data=pd.DataFrame({'arr': [[1, 2, 3], [4, 5, 6]]}),
         ibis_expr_func=lambda t: t.select(mapped=t.arr.map(lambda x: x * 2)),
         pandas_expr_func=lambda df: pd.DataFrame({'mapped': df['arr'].apply(lambda x: [item * 2 for item in x])}))
-@pytest.mark.skip(reason='not supported in SQream')
 def test_op_array_max():
     run_test_case(
         op_name='ArrayMax',
         data=pd.DataFrame({'arr': [[1, 5, 2], [8, 3, 9]]}),
-        ibis_expr_func=lambda t: t.select(array_max=t.arr.max()),
+        ibis_expr_func=lambda t: t.select(array_max=t.arr.maxs()),
         pandas_expr_func=lambda df: pd.DataFrame({'array_max': df['arr'].apply(max)}))
-@pytest.mark.skip(reason='not supported in SQream')
 def test_op_array_mean():
     run_test_case(
         op_name='ArrayMean',
         data=pd.DataFrame({'arr': [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]}),
-        ibis_expr_func=lambda t: t.select(array_mean=t.arr.mean()),
+        ibis_expr_func=lambda t: t.select(array_mean=t.arr.means()),
         pandas_expr_func=lambda df: pd.DataFrame({'array_mean': df['arr'].apply(np.mean)}))
-@pytest.mark.skip(reason='not supported in SQream')
 def test_op_array_min():
     run_test_case(
         op_name='ArrayMin',
         data=pd.DataFrame({'arr': [[1, 5, 2], [8, 3, 9]]}),
-        ibis_expr_func=lambda t: t.select(array_min=t.arr.min()),
+        ibis_expr_func=lambda t: t.select(array_min=t.arr.mins()),
         pandas_expr_func=lambda df: pd.DataFrame({'array_min': df['arr'].apply(min)}))
 @pytest.mark.skip(reason='not supported in SQream')
 def test_op_array_mode():
@@ -373,7 +370,7 @@ def test_op_array_slice():
         data=pd.DataFrame({'arr': [[1, 2, 3, 4, 5], [6, 7, 8]]}),
         ibis_expr_func=lambda t: t.select(sliced=t.arr[1:3]),
         pandas_expr_func=lambda df: pd.DataFrame({'sliced': df['arr'].apply(lambda x: x[1:3])}))
-@pytest.mark.skip(reason='not supported in SQream')
+# @pytest.mark.skip(reason='not supported in SQream')
 def test_op_array_sort():
     run_test_case(
         op_name='ArraySort',
@@ -387,12 +384,11 @@ def test_op_array_string_join():
         data=pd.DataFrame({'arr': [['a', 'b', 'c'], ['x', 'y']]}),
         ibis_expr_func=lambda t: t.select(joined=t.arr.join(', ')),
         pandas_expr_func=lambda df: pd.DataFrame({'joined': df['arr'].apply(lambda x: ', '.join(x))}))
-@pytest.mark.skip(reason='not supported in SQream')
 def test_op_array_sum():
     run_test_case(
         op_name='ArraySum',
         data=pd.DataFrame({'arr': [[1, 2, 3], [4, 5, 6]]}),
-        ibis_expr_func=lambda t: t.select(array_sum=t.arr.sum()),
+        ibis_expr_func=lambda t: t.select(array_sum=t.arr.sums()),
         pandas_expr_func=lambda df: pd.DataFrame({'array_sum': df['arr'].apply(sum)}))
 @pytest.mark.skip(reason='not supported in SQream')
 def test_op_array_union():
@@ -1132,7 +1128,6 @@ def test_op_timestamp_sub_minutes():
     run_test_case(
         op_name='TimestampSubMinutes',
         data=pd.DataFrame({'ts': pd.to_datetime(['2023-01-01 10:00:00', '2023-01-02 11:00:00']), 'm': [30, 90]}),
-       
         ibis_expr_func=lambda t: t.select(new_ts=t.ts - t.m.as_interval('m')),
         pandas_expr_func=lambda df: pd.DataFrame({'new_ts': df['ts'] - pd.to_timedelta(df['m'], unit='m')}))
 def test_op_timestamp_truncate_hour():
