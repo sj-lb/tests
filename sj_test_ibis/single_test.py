@@ -23,7 +23,7 @@ DATABASE = os.environ.get("IBIS_SQREAM_DATABASE", "master")
 CLUSTERED = os.environ.get("IBIS_SQREAM_CLUSTERED", "false").lower() == "true"
 ibis_con = connect(host=HOST, port=PORT, user=USER, password=PASSWORD, database=DATABASE, clustered=CLUSTERED)
 
-ibis.set_backend('sqream://sqream:sqream@192.168.4.31:5000')
+ibis.set_backend('sqream://sqream:sqream@127.0.0.1:5000')
 
 # --- Logging Setup ---
 logging.basicConfig(
