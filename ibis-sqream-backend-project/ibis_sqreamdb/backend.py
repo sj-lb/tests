@@ -29,7 +29,14 @@ pymods_names = {
     ops.ArrayMin: 'array_min',
     ops.ArrayMean: 'array_mean',
     ops.ArraySum: 'array_sum',
-    ops.ArraySort: 'array_sort'
+    ops.ArraySort: 'array_sort',
+    ops.ArrayRepeat: 'array_repeat',
+    ops.ArraySlice: 'array_slice',
+    ops.ArrayFilter: 'array_filter',
+    ops.ArrayMap: 'array_map',
+    ops.ArrayDistinct: 'array_distinct',
+    ops.ArrayIntersect: 'array_intersect',
+    ops.ArrayUnion: 'array_union'
 }
 
 class Backend(SQLBackend):
@@ -113,15 +120,10 @@ class Backend(SQLBackend):
         database: str | None = None, # <-- FIX: Changed parameter name from 'schema' to 'database'
         catalog: str | None = None
     ) -> sch.Schema:
-        
         if catalog is not None:
             logger.info("SQreamDB does not support catalogs, the 'catalog' argument will be ignored.")
 
-        # query = (
-        #     sg.select(C.column_name, C.type_name, sge.false())
-        #     .from_(sg.table('view_sqream_catalog_columns', db='public'))
-        #     .where(C.table_name.eq(sge.convert(table_name))))
-        query = (sg.select(sg.func('ibis_tbl_details', sge.convert('public.' + table_name))))
+        query = (sg.select(sg.func('ibis_table_details', sge.convert('public.' + table_name))))
         # The 'database' parameter now correctly matches the variable name
         if database:
             query = query.where(C.table_schema.eq(sge.convert(database)))

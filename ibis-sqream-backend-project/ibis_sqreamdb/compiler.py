@@ -98,6 +98,13 @@ class SqreamCompiler(SQLGlotCompiler):
         ops.ArrayMax: "m_internal.array_max",
         ops.ArraySum: "m_internal.array_sum",
         ops.ArraySort: "m_internal.array_sort",
+        ops.ArrayRepeat: 'm_internal.array_repeat',
+        ops.ArraySlice: 'm_internal.array_slice', # TODO: handle param
+        ops.ArrayFilter: 'm_internal.array_filter', # TODO: handle param
+        ops.ArrayMap: 'm_internal.array_map', # TODO: handle param
+        ops.ArrayDistinct: 'm_internal.array_distinct',
+        ops.ArrayIntersect: 'm_internal.array_intersect',
+        ops.ArrayUnion: 'm_internal.array_union'
         # ops.First: "top 1"
     }
     
