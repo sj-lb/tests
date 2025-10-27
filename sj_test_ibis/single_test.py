@@ -205,6 +205,13 @@ def run_test_case2(op_name, data: dict[str, pd.DataFrame], ibis_expr_func, panda
             except Exception as e:
                 logging.error(f"Could not drop table {table_name_to_drop}. Reason: {e}")
 
+def test_op_array_max():
+    run_test_case(
+        op_name='ArrayMax',
+        data=pd.DataFrame({'arr': [[1, 5, 2], [8, 3, 9]]}),
+        ibis_expr_func=lambda t: t.select(array_max=t.arr.maxs()),
+        pandas_expr_func=lambda df: pd.DataFrame({'array_max': df['arr'].apply(max)}))
+
 # def test_op_arg_max():
 #     run_test_case(
 #         op_name='ArgMax',

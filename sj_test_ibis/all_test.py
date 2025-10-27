@@ -293,7 +293,7 @@ def test_op_array_distinct():
     run_test_case(
         op_name='ArrayDistinct',
         data=pd.DataFrame({'arr': [[1, 2, 2, 3], [4, 5, 4]]}),
-        ibis_expr_func=lambda t: t.select(distinct_arr=t.arr.distinct()),
+        ibis_expr_func=lambda t: t.select(distinct_arr=t.arr.unique()),
         pandas_expr_func=lambda df: pd.DataFrame({'distinct_arr': df['arr'].apply(lambda x: sorted(list(set(x))))})) # Sort for comparison
 @pytest.mark.skip(reason='not supported in SQream')
 def test_op_array_filter():

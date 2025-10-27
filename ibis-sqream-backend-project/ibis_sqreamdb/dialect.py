@@ -23,6 +23,7 @@ class SQreamDialect(Dialect):
         
         TRANSFORMS = {
             exp.Array: lambda self, e: f"ARRAY[{self.expressions(e)}]",
+            exp.Union: lambda self, e: f"{self.sql(e, 'this')} UNION{'' if e.args.get('distinct', False) else ' ALL'} {self.sql(e, 'expression')}"
         }
 
         # Specifies how AST nodes representing data types should be converted into SQL

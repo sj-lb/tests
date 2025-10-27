@@ -1,4 +1,4 @@
-// g++ parse_iceberg_md.cpp\
+// g++ parse_iceberg_md.cpp -o r1.out\
  /home/johnny/git/vcpkg/installed/x64-linux/lib/libminiocpp.a\
  /home/johnny/git/vcpkg/installed/x64-linux/lib/libcurlpp.a\
  /home/johnny/git/vcpkg/installed/x64-linux/lib/libpugixml.a\
@@ -11,6 +11,19 @@
  -ldl -lz -lsnappy -lavrocpp -lz -lcurl -lpthread\
  -L/usr/local/sqream-prerequisites/versions/5.28/lib
 
+// g++ -g parse_iceberg_md.cpp -o r1_debug.out\
+ /home/johnny/git/vcpkg/installed/x64-linux/debug/lib/libminiocpp.a\
+ /home/johnny/git/vcpkg/installed/x64-linux/debug/lib/libcurlpp.a\
+ /home/johnny/git/vcpkg/installed/x64-linux/debug/lib/libpugixml.a\
+ /home/johnny/git/vcpkg/installed/x64-linux/debug/lib/libINIReader.a\
+ /home/johnny/git/vcpkg/installed/x64-linux/debug/lib/libinih.a\
+ /home/johnny/git/vcpkg/installed/x64-linux/debug/lib/libssl.a\
+ /home/johnny/git/vcpkg/installed/x64-linux/debug/lib/libcrypto.a\
+ -isystem /usr/local/sqream-prerequisites/versions/5.28/include\
+ -isystem /home/johnny/git/vcpkg/installed/x64-linux/include\
+ -ldl -lz -lsnappy -lavrocpp -lz -lcurl -lpthread\
+ -L/usr/local/sqream-prerequisites/versions/5.28/lib
+
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -18,10 +31,10 @@
 #include <vector>
 #include <nlohmann/json.hpp>
 #include <miniocpp/client.h>
-#include <avro/Compiler.hh>
-#include <avro/DataFile.hh>
-#include <avro/Generic.hh>
-#include <avro/Specific.hh>
+#include "avro/Compiler.hh"
+#include "avro/DataFile.hh"
+#include "avro/Generic.hh"
+#include "avro/Specific.hh"
 using json = nlohmann::json;
 
 // ====== Config ======
@@ -29,24 +42,39 @@ const std::string ENDPOINT = "192.168.5.82:9000";
 const std::string ACCESS_KEY = "admin";
 const std::string SECRET_KEY = "password";
 const std::string BUCKET = "warehouse";
-const std::string TABLE_PATH = "wh/my_namespace/my_table/metadata/00001-1234567890123.metadata.json";
+const std::string TABLE_PATH = "my_namespace/my_table/metadata/snap-659779950866775480-1-6a41d1fe-ace2-4ec5-9620-d54679309e8b.avro";
 const long long TARGET_SNAPSHOT_ID = 659779950866775480LL;
 
 // Helper: download object from MinIO into string.
-// NOTE: This has been updated to use the streaming GetObject() response, as the callback
-// API has changed in recent versions of the MinIO C++ SDK.
+// NOTE: This has been updated to directly access the data member of the response
+// object, which is required for this version of the SDK.
 std::string downloadFromMinIO(minio::s3::Client& client, const std::string& object) {
     minio::s3::GetObjectArgs args;
     args.bucket = BUCKET;
     args.object = object;
+    args.region = "us-east-1";
+    args.datafunc = [](minio::http::DataFunctionArgs args) -> bool {
+            // std::cout << args.datachunk;
+            std::cout << "BLA\n";
+            return true;
+        };
 
-    minio::s3::GetObjectResponse resp = client.GetObject(args);
+    std::cout << "BLUE\n";
+    minio::s3::GetObjectResponse resp;
+    try
+    {
+        minio::s3::GetObjectResponse resp = client.GetObject(args);
+    }
+    catch(const std::exception& e)
+    {
+        std::cerr << e.what() << '\n';
+    }
+
+    std::cout << "SHOE\n";
     if (!resp) {
         throw std::runtime_error("Failed to download " + object + " : " + resp.Error().String());
     }
-    
-    // Based on the provided struct definition, the data is stored in the 'data' member.
-    // We can directly return it instead of using a streaming loop.
+
     return resp.data;
 }
 
