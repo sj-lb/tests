@@ -1,0 +1,14 @@
+spark-shell\
+ --packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.7.0,org.apache.iceberg:iceberg-aws-bundle:1.7.0\
+ --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions\
+ --conf spark.sql.catalog.my_catalog=org.apache.iceberg.spark.SparkCatalog\
+ --conf spark.sql.catalog.my_catalog.type=rest\
+ --conf spark.sql.catalog.my_catalog.uri=http://192.168.5.82:8181\
+ --conf spark.sql.catalog.my_catalog.warehouse=s3://warehouse\
+ --conf spark.sql.catalog.my_catalog.io-impl=org.apache.iceberg.aws.s3.S3FileIO\
+ --conf spark.sql.catalog.my_catalog.s3.endpoint=http://192.168.5.82:9000\
+ --conf spark.sql.catalog.my_catalog.s3.path-style-access=true\
+ --conf spark.sql.catalog.my_catalog.s3.access-key-id=admin\
+ --conf spark.sql.catalog.my_catalog.s3.secret-access-key=password\
+ --conf spark.sql.catalog.my_catalog.client.region=us-east-1\
+ --conf spark.sql.defaultCatalog=my_catalog
