@@ -1,6 +1,5 @@
 # ignore all (for whitelisting)
 *
-!.gitignore
 
 # allows sub-dirs
 !*/
@@ -24,3 +23,8 @@
 *.pb.h
 *env
 __init__.py
+
+# exceptions
+!.gitignore
+!pyproject.toml
+!utils/__init__.py

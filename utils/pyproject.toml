@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sj-utils"
+version = "0.1.0"
+description = "SJ utilities package"
+requires-python = ">=3.8"
+dependencies = [
+    "fastavro",
+    "pyspark",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+]
+
+[tool.setuptools]
+packages = ["sj.utils"]
+package-dir = {"sj.utils" = "."}
