@@ -9,11 +9,11 @@ def get_session(**kwargs):
         "region": "us-east-1"
     }
     config = {**defaults, **kwargs}
-    
+
     ip = config["ip"]
     if not ip.startswith("http://"):
         ip = f"http://192.168.{ip}" if ip.count('.') == 1 else f"http://{ip}"
-    
+
     return SparkSession.builder\
         .appName("IcebergParquetApp")\
         .config("spark.jars.packages", (
