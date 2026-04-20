@@ -35,6 +35,15 @@ def get_session(ip: str | float = "http://192.168.0.103", **kwargs):
         .config("spark.sql.catalog.my_catalog.client.region", config["region"])\
         .getOrCreate()
 
+def clear_ns(fdb, root: str):
+    target = '' if root == '' else f" in {root}"
+    print(f"clearing namespace {root}...")
+    for ns in fdb.sql(f"show namespaces{target}").collect():
+        clear_ns(fdb, ns[0])
+    for t in fdb.sql(f"show tables in {root}").collect():
+        fdb.sql(f"drop table if exists {t[0]}.{t[1]}")
+    fdb.sql(f"drop namespace if exists {root}")
+
 #fdb.sql('show namespaces[ in <namespace>]).show()
 
 # fdb.sql("CREATE NAMESPACE IF NOT EXISTS sj")
