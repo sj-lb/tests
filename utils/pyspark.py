@@ -1,6 +1,6 @@
 from pyspark.sql import SparkSession
 
-def get_session(ip: str = "http://192.168.0.103", **kwargs):
+def get_session(ip: str | float = "http://192.168.0.103", **kwargs):
     defaults = {
         "warehouse": "s3://warehouse",
         "id": "admin",
@@ -9,6 +9,8 @@ def get_session(ip: str = "http://192.168.0.103", **kwargs):
     }
     config = {**defaults, **kwargs}
 
+    if isinstance(ip, float):
+        ip = str(ip)
     if not ip.startswith("http://"):
         ip = f"http://192.168.{ip}" if ip.count('.') == 1 else f"http://{ip}"
 
