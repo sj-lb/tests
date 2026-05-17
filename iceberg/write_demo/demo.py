@@ -21,11 +21,11 @@ if __name__ == '__main__':
     fdb.sql("CREATE TABLE demo_write.t_sprk(s STRING)")
     sleep(2)
 
-    print("\n\033[mINSERT INTO demo_write.t_sprk VALUES ('is this thing on?');\033[36m")
-    fdb.sql("INSERT INTO demo_write.t_sprk VALUES ('is this thing on?')\n")
+    print("\n\033[mINSERT INTO demo_write.t_sprk VALUES ('is this thing on?');\n\033[36m")
+    fdb.sql("INSERT INTO demo_write.t_sprk VALUES ('is this thing on?')")
     sleep(2)
 
     user_input = ""
     while user_input.lower() != 'q':
         select_all(fdb, 'demo_write')
-        user_input = input("")
+        user_input = input("\033[m")
