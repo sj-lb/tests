@@ -5,45 +5,35 @@
 #include <memory>
 
 #include "config.hpp"
-#include "trajectory.hpp"
+#include "entity.hpp"
 
 namespace iron_dome_game
 {
-
-struct Entity;
-
-// Two points, representing a rectangle around an entity
-struct BoundingBox
-{
-    Pos p1;
-    Pos p2;
-};
-
 class Grid
 {
 public:
-    Grid() = default;
+    Grid(size_t rows = GRID_ROWS, size_t columns = GRID_COLUMNS);
     ~Grid() = default;
 
     void draw();
     void refresh();
 
-    uint16_t rows() { return GRID_ROWS; }
-    uint16_t columns() { return GRID_COLUMNS; }
+    uint16_t rows() { return m_grid.size(); }
+    uint16_t columns() { return m_grid.empty() ? 0 : m_grid[0].size(); }
 
-    bool drawPixel(uint16_t row, uint16_t col, char pixel);
+    void draw(const std::unique_ptr<Entity>& entity);
 
-    void addEntity(std::shared_ptr<Entity> entity) { m_entities.push_back(entity); }
+    void addEntity(std::unique_ptr<Entity> entity) { m_entities.push_back(std::move(entity)); }
 
     uint16_t checkHits();
 
 private:
-    void forEveryPixel(std::function<void(int row, int col)> function, const int rowCount = GRID_ROWS, const int columnCount = GRID_COLUMNS);
+    static bool intersects(
+        const std::unique_ptr<Entity>& first,
+        const std::unique_ptr<Entity>& second);
 
-    static bool intersects(std::shared_ptr<Entity> first, std::shared_ptr<Entity> second);
+    std::vector<std::string> m_grid;
 
-    char m_grid[GRID_ROWS][GRID_COLUMNS];
-
-    std::list<std::shared_ptr<Entity>> m_entities;
+    std::list<std::unique_ptr<Entity>> m_entities;
 };
 }

@@ -1,35 +1,27 @@
 #pragma once
+#include <vector>
+#include <string>
+#include <optional>
 
 #include "config.hpp"
-#include "grid.hpp"
 #include "trajectory.hpp"
 
 namespace iron_dome_game
 {
-enum EntityType
+struct BoundingBox
 {
-    NONE,
-    PITCHER,
-    CANNON,
-    PLATE,
-    ROCKET
+    Pos lower_left;
+    Pos upper_right;
 };
 
-struct Entity
+class Entity
 {
-    Trajectory trajectory;
+public:
+    virtual ~Entity() = 0;
+    virtual Pos pos() = 0;
 
-    virtual EntityType type() { return EntityType::NONE; }
-
-    Pos pos();
-
-    uint16_t width = 0;
-    uint16_t height = 0;
-
-    BoundingBox boundingBox();
-
-    virtual bool isStatic() = 0;
-    
-    virtual void drawOnGrid(Grid &grid) = 0;
+    virtual std::optional<BoundingBox> boundingBox() { return std::nullopt; }
+    virtual const std::vector<std::string> shape() const = 0;
 };
+inline Entity::~Entity() = default;
 }

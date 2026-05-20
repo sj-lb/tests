@@ -10,11 +10,8 @@ struct Rocket : public Entity
     Rocket(float angle, float speed);
     ~Rocket() = default;
 
-    EntityType type() override { return EntityType::ROCKET; }
-
-    void drawOnGrid(Grid &grid) override;
-
-    bool isStatic() override { return false; }
+    virtual const std::vector<std::string> shape() const override;
+    virtual std::optional<BoundingBox> boundingBox() override;
 
     // Check if rocket has expired (gone off screen or too old)
     bool isExpired() const;

@@ -4,16 +4,16 @@
 
 namespace iron_dome_game
 {
-struct Plate : public Entity
+class Plate : public Entity
 {
-    Plate(Velocity velocity);
-    ~Plate() = default;
+public:
+    Plate(Pos pos, Velocity v);
 
-    void drawOnGrid(Grid &grid) override;
+    virtual const std::vector<std::string> shape() const override;
+    virtual std::optional<BoundingBox> boundingBox() override;
+    virtual Pos pos() override { return trajectory.calculatePosition(); }
 
-    EntityType type() override { return EntityType::PLATE; }
-
-    bool isStatic() { return false; }
+    Trajectory trajectory;
 };
 
 }

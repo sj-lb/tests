@@ -1,6 +1,6 @@
 #include "game.hpp"
 
-int main(int argc, char** argv)
+int main()
 {
     iron_dome_game::Game game;
     game.play();

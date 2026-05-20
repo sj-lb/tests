@@ -2,29 +2,39 @@
 #include <random>
 #include <memory>
 #include <math.h>
+#include <termios.h>
 
 #include "game.hpp"
 
-#define DEG_TO_RAD(x)   (x * 0.0174533)
+double degToRad(double x) { return x * 0.0174533; }
 
 namespace iron_dome_game
 {
 
 Game::Game() 
 {
-    grid.addEntity(std::make_shared<iron_dome_game::Pitcher>());
+    grid.addEntity(std::make_unique<iron_dome_game::Pitcher>(
+        Pos{static_cast<int16_t>(grid.columns() - 7), 0}));
 }
 
 //============================================================================//
 
-void Game::keyboardListener() 
+void Game::keyboardThread() 
 {
     while (gameIsActive)
     {
-        // Block until a newline is entered
-        char c = getchar();
+        switch (keyboardListener.getKey()) {
+        case '\n':
+            // spawnRocket();
+            isShotFired = true;
+            break;
+        case KEY_ESC:
+            gameIsActive = false;
+            break;
+        default:
+            break;
+        }
         // std::cout << "Fired" << std::endl;
-        isShotFired = true;
     }
 }
 
@@ -36,7 +46,7 @@ void Game::play()
 
     // std::cout << "PLAYING" << std::endl;
     std::chrono::steady_clock::time_point t0 = std::chrono::steady_clock::now();
-    std::thread keyboardThread(&Game::keyboardListener, this);
+    std::thread keyboardThread(&Game::keyboardThread, this);
 
     std::chrono::steady_clock::time_point lastTimeRefreshed = std::chrono::steady_clock::now();
 
@@ -82,13 +92,15 @@ void Game::play()
 
 void Game::spawnPlate() 
 {
-    constexpr int ANGLE = 120;
-
+    static const double ANGLE = degToRad(120.0);
     int firePower = std::rand() % 15 + 30;
-    Velocity velocity;
-    velocity.x = std::cos(DEG_TO_RAD(ANGLE)) * firePower;
-    velocity.y = std::sin(DEG_TO_RAD(ANGLE)) * firePower;
-    grid.addEntity(std::make_shared<Plate>(velocity));
+
+    grid.addEntity(std::make_unique<Plate>(
+        Pos{static_cast<int16_t>(grid.columns() - 10), 5},
+        Velocity{ 
+        .x = static_cast<int16_t>(std::cos(ANGLE) * firePower),
+        .y = static_cast<int16_t>(std::sin(ANGLE) * firePower)
+    }));
 }
 
 }

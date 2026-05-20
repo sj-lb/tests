@@ -3,22 +3,26 @@
 #include <iostream>
 #include <thread>
 
+#include "keyboard_listener.hpp"
 #include "grid.hpp"
 #include "pitcher.hpp"
 #include "plate.hpp"
 
 namespace iron_dome_game
 {
-struct Game
+class Game
 {
+public:
     Game();
     ~Game() = default;
 
     void play();
-    void keyboardListener();
-    Grid grid;
-
+    void keyboardThread();
+    
     void spawnPlate();
+private:
+    Grid grid;
+    KeyboardListener keyboardListener;
 
     bool isShotFired = false;
     bool gameIsActive = false;

@@ -4,16 +4,16 @@
 
 namespace iron_dome_game
 {
-struct Pitcher : public Entity
+class Pitcher : public Entity
 {
-    Pitcher();
-    ~Pitcher() = default;
+public:
+    Pitcher(Pos pos) : m_pos(pos) {}
 
-    EntityType type() override { return EntityType::PITCHER; }
+    virtual const std::vector<std::string> shape() const override;
+    virtual Pos pos() override { return m_pos; }
 
-    void drawOnGrid(Grid &grid) override;
-
-    bool isStatic() { return true; }
+private:
+    const Pos m_pos;
 };
 
 }
