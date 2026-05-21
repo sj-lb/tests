@@ -121,13 +121,9 @@ void Game::play()
 
         auto game_time = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - t0).count();
         if (game_time > GAME_RUN_TIME_SEC)
-        {
             gameIsActive = false;
-        }
         else if (game_time / 2 > platesFired)
-        {
             spawnPlate();
-        }
     }
 
     keyboard_thread.join();
