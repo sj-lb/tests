@@ -1,7 +1,7 @@
 #pragma once
 
 #include <functional>
-#include <list>
+#include <map>
 #include <memory>
 
 #include "config.hpp"
@@ -23,7 +23,7 @@ public:
 
     void draw(const std::unique_ptr<Entity>& entity);
 
-    void addEntity(std::unique_ptr<Entity> entity) { m_entities.push_back(std::move(entity)); }
+    void addEntity(std::unique_ptr<Entity> entity);
 
     uint16_t checkHits();
 
@@ -34,6 +34,6 @@ private:
 
     std::vector<std::string> m_grid;
 
-    std::list<std::unique_ptr<Entity>> m_entities;
+    std::map<unsigned int, std::unique_ptr<Entity>> m_entities;
 };
 }

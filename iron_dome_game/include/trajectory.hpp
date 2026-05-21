@@ -6,6 +6,9 @@
 
 namespace iron_dome_game
 {
+
+inline double degToRad(double x) { return x * 0.0174533; }
+
 struct Pos
 {
     int16_t x;

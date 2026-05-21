@@ -9,7 +9,7 @@ namespace iron_dome_game
 const std::vector<std::string> Pitcher::shape() const
 {
     static const std::vector<std::string> shape = {
-         "  *",
+        "  *",
         "/^|^\\",
         "  |",
         " / \\",

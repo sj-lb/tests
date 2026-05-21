@@ -5,7 +5,6 @@
 
 #include "config.hpp"
 #include "trajectory.hpp"
-
 namespace iron_dome_game
 {
 struct BoundingBox
@@ -23,5 +22,4 @@ public:
     virtual std::optional<BoundingBox> boundingBox() { return std::nullopt; }
     virtual const std::vector<std::string> shape() const = 0;
 };
-inline Entity::~Entity() = default;
 }

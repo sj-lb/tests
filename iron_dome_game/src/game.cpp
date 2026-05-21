@@ -5,8 +5,10 @@
 #include <termios.h>
 
 #include "game.hpp"
-
-double degToRad(double x) { return x * 0.0174533; }
+#include "pitcher.hpp"
+#include "plate.hpp"
+#include "rocket.hpp"
+#include "dome.hpp"
 
 namespace iron_dome_game
 {
@@ -15,6 +17,8 @@ Game::Game()
 {
     grid.addEntity(std::make_unique<iron_dome_game::Pitcher>(
         Pos{static_cast<int16_t>(grid.columns() - 7), 0}));
+    grid.addEntity(std::make_unique<iron_dome_game::Dome>(
+        Pos{static_cast<int16_t>(grid.columns() / 2 - 3), 0}));
 }
 
 //============================================================================//

@@ -5,8 +5,6 @@
 
 #include "keyboard_listener.hpp"
 #include "grid.hpp"
-#include "pitcher.hpp"
-#include "plate.hpp"
 
 namespace iron_dome_game
 {

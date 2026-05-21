@@ -16,4 +16,4 @@ public:
     Trajectory trajectory;
 };
 
-}
+} // namespace iron_dome_game

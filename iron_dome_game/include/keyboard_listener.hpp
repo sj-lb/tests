@@ -2,7 +2,6 @@
 
 namespace iron_dome_game
 {
-// Custom enum to make handling input cleaner in your game loop
 enum Key {
     KEY_NONE = 0,
     KEY_ESC = 27,

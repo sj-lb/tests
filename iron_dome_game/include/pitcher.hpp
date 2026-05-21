@@ -16,4 +16,4 @@ private:
     const Pos m_pos;
 };
 
-}
+} // namespace iron_dome_game
