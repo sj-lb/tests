@@ -15,6 +15,7 @@
 !*.proto
 !*.java
 !*.md
+!?akefile
 
 # ignore generated files
 *_pb2.py
