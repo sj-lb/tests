@@ -13,8 +13,9 @@ public:
 
     virtual const std::vector<std::string> shape() const override;
     virtual std::optional<BoundingBox> boundingBox() override;
-
     virtual Pos pos() override { return trajectory.calculatePosition(); };
+
+    Pos pos0() { return trajectory.initial_state.pos; }
 private:
     Trajectory trajectory;
 };

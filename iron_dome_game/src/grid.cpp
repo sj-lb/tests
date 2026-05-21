@@ -1,7 +1,10 @@
 #include <iostream>
+
 #include "grid.hpp"
 #include "entity.hpp"
 #include "rocket.hpp"
+#include "plate.hpp"
+
 namespace iron_dome_game
 {
 
@@ -17,7 +20,15 @@ Grid::Grid(size_t rows, size_t columns) : m_grid(rows, std::string(columns, ' ')
 void Grid::addEntity(std::unique_ptr<Entity> entity) 
 {
     static unsigned int id = 0;
+
+    std::lock_guard<std::mutex> lock(m_mutex);
     m_entities[id++] = std::move(entity);
+}
+
+void Grid::removeEntity(unsigned int id) 
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_entities.erase(id);
 }
 
 void Grid::draw() 
@@ -55,13 +66,12 @@ void Grid::draw(const std::unique_ptr<Entity>& entity)
     }
 }
 
-uint16_t Grid::checkHits() 
+std::vector<std::pair<unsigned int, std::optional<unsigned int>>> Grid::checkHits()
 {
-    uint16_t hits = 0;
+    std::vector<std::pair<unsigned int, std::optional<unsigned int>>> hits;
     std::vector<std::vector<unsigned int>> hit_map(
         rows(),
         std::vector<unsigned int>(columns(), 0));
-    std::vector<unsigned int> to_erase;
 
     for (const auto& [id, entity] : m_entities)
     {
@@ -71,12 +81,12 @@ uint16_t Grid::checkHits()
         if (entity->pos().y > rows())
         {
             if (dynamic_cast<Rocket*>(entity.get()) != nullptr)
-                to_erase.push_back(id);
+                hits.emplace_back(id, std::nullopt);
             continue;
         }
         if (entity->pos().x < 0 || entity->pos().x >= columns() || entity->pos().y < 0)
         {
-            to_erase.push_back(id);
+            hits.emplace_back(id, std::nullopt);
             continue;
         }
 
@@ -90,17 +100,18 @@ uint16_t Grid::checkHits()
                         hit_map[row][col] = id;
                     else
                     {
-                        ++hits;
-                        to_erase.push_back(id);
-                        to_erase.push_back(hit_map[row][col]);
+                        Plate* plate;
+                        if (dynamic_cast<Plate*>(entity.get()) != nullptr)
+                            plate = dynamic_cast<Plate*>(entity.get());
+                        else
+                            plate = dynamic_cast<Plate*>(m_entities[hit_map[row][col]].get());
+                        plate->setAirTime();
+                        hits.emplace_back(id, hit_map[row][col]);
                     }
                 }
             }
         }
     }
-
-    for (auto id : to_erase)
-        m_entities.erase(id);
 
     return hits;
 }

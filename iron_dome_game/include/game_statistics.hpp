@@ -34,12 +34,12 @@ namespace iron_dome_game
  */
 struct HitRecord
 {
-    std::chrono::steady_clock::time_point timestamp;
+    HitRecord(int score_, float time_to_hit_)
+      : score(score_), time_to_hit(time_to_hit_), timestamp(std::chrono::steady_clock::now()) {}
+
     int score;
-    float timeToHit;
-    
-    // TODO: Add constructor
-    HitRecord(int score, float timeToHit);
+    float time_to_hit;
+    std::chrono::steady_clock::time_point timestamp;
 };
 
 /**
@@ -50,17 +50,15 @@ struct HitRecord
 class GameStatistics
 {
 public:
-    GameStatistics();
-    ~GameStatistics() = default;
-    
+    void recordShot() { ++m_total_shots; }
     /**
      * Record a successful hit
      * 
      * TODO: Implement method to record a hit
      * @param score Score earned for this hit
-     * @param timeToHit Time from plate spawn to hit (seconds)
+     * @param time_to_hit Time from plate spawn to hit (seconds)
      */
-    void recordHit(int score, float timeToHit);
+    void recordHit(int score, float time_to_hit);
     
     /**
      * Record a missed shot
@@ -137,17 +135,14 @@ public:
 
 private:
     // TODO: Add member variables to track statistics
-    int m_totalScore;
-    uint16_t m_totalHits;
-    uint16_t m_totalShots;
-    uint16_t m_currentStreak;
-    uint16_t m_bestStreak;
+    int m_total_score = 0;
+    uint16_t m_total_shots = 0;
+    uint16_t m_total_hits = 0;
+    uint16_t m_current_streak = 0;
+    uint16_t m_best_streak = 0;
     
     // TODO: Store hit history
-    std::vector<HitRecord> m_hitHistory;
-    
-    // TODO: Helper method to update streak
-    void updateStreak(bool isHit);
+    std::vector<HitRecord> m_hit_history;
 };
 
 }

@@ -5,6 +5,9 @@
 
 #include "keyboard_listener.hpp"
 #include "grid.hpp"
+#include "score_calculator.hpp"
+#include "config.hpp"
+#include "game_statistics.hpp"
 
 namespace iron_dome_game
 {
@@ -18,19 +21,25 @@ public:
     void keyboardThread();
     
     void spawnPlate();
+    void spawnRocket();
 private:
     Grid grid;
-    KeyboardListener keyboardListener;
+    KeyboardListener keyboard_listener;
+    GameStatistics stats;
+    ScoreCalculator scoreCalculator;
 
     bool isShotFired = false;
     bool gameIsActive = false;
 
-    static constexpr const int GAME_RUN_TIME_SEC = 60;
+    static constexpr int GAME_RUN_TIME_SEC = 60;
 
     // Statistics
     uint16_t platesFired = 0;
-    uint16_t platesHit   = 0;
+    uint16_t plates_hit   = 0;
     uint16_t shotsFired  = 0;
+
+    float m_rocket_angle = 90.0f;
+    float m_rocket_speed = 30.0f;
 };
 
 }

@@ -3,6 +3,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <mutex>
 
 #include "config.hpp"
 #include "entity.hpp"
@@ -24,16 +25,14 @@ public:
     void draw(const std::unique_ptr<Entity>& entity);
 
     void addEntity(std::unique_ptr<Entity> entity);
-
-    uint16_t checkHits();
+    void removeEntity(unsigned int id);
+    std::unique_ptr<Entity> getEntity(unsigned int id) { return std::move(m_entities[id]); }
+    std::vector<std::pair<unsigned int, std::optional<unsigned int>>> checkHits();
 
 private:
-    static bool intersects(
-        const std::unique_ptr<Entity>& first,
-        const std::unique_ptr<Entity>& second);
-
     std::vector<std::string> m_grid;
 
+    mutable std::mutex m_mutex;
     std::map<unsigned int, std::unique_ptr<Entity>> m_entities;
 };
 }

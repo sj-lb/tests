@@ -1,4 +1,5 @@
 #include <unistd.h>
+#include <thread>
 
 #include "keyboard_listener.hpp"
 
@@ -23,6 +24,8 @@ KeyboardListener::~KeyboardListener() {
     tcsetattr(STDIN_FILENO, TCSANOW, &orig_termios);
 }
 
+//============================================================================//
+
 int KeyboardListener::getKey() {
     char c;
 
@@ -31,7 +34,7 @@ int KeyboardListener::getKey() {
 
     if (c == KEY_ESC) {
         char seq[2];
-        usleep(10'000); 
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
         if (read(STDIN_FILENO, &seq[0], 1) == 0 || read(STDIN_FILENO, &seq[1], 1) == 0)
             return KEY_ESC;

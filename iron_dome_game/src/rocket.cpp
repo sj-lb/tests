@@ -7,8 +7,8 @@ Rocket::Rocket(Pos pos, float angle, float speed)
   : trajectory(Trajectory{.initial_state = InitialState{
     .pos = pos,
     .v = Pos{
-        static_cast<int16_t>(round(speed * cos(degToRad(angle)))),
-        static_cast<int16_t>(round(speed * sin(degToRad(angle))))
+        static_cast<int16_t>(round(speed * cos(toRad(angle)))),
+        static_cast<int16_t>(round(speed * sin(toRad(angle))))
     },
     .a = Pos{0, 0}}})
 {}

@@ -34,8 +34,8 @@ public:
      * @return Calculated score
      */
     virtual int calculateScore(
-        std::shared_ptr<Plate> plate,
-        std::shared_ptr<Rocket> rocket,
+        std::unique_ptr<Plate> plate,
+        std::unique_ptr<Rocket> rocket,
         float hitTime
     ) const = 0;
 };
@@ -65,8 +65,8 @@ public:
     // Use formula: distance = sqrt((x2-x1)² + (y2-y1)²)
     // Return: baseScore * (distance / maxDistance)
     int calculateScore(
-        std::shared_ptr<Plate> plate,
-        std::shared_ptr<Rocket> rocket,
+        std::unique_ptr<Plate> plate,
+        std::unique_ptr<Rocket> rocket,
         float hitTime
     ) const override;
 };
@@ -95,8 +95,8 @@ public:
     // Calculate plate speed: speed = sqrt(vx² + vy²)
     // Return: baseScore * (speed / maxSpeed)
     int calculateScore(
-        std::shared_ptr<Plate> plate,
-        std::shared_ptr<Rocket> rocket,
+        std::unique_ptr<Plate> plate,
+        std::unique_ptr<Rocket> rocket,
         float hitTime
     ) const override;
 };
@@ -126,8 +126,8 @@ public:
     // Return: baseScore * (1.0 / (hitTime + 1.0))
     // This gives higher scores for smaller hitTime
     int calculateScore(
-        std::shared_ptr<Plate> plate,
-        std::shared_ptr<Rocket> rocket,
+        std::unique_ptr<Plate> plate,
+        std::unique_ptr<Rocket> rocket,
         float hitTime
     ) const override;
 };
@@ -145,16 +145,16 @@ public:
 class ScoreCalculator
 {
 public:
-    ScoreCalculator();
+    ScoreCalculator() : m_strategy(std::make_unique<DistanceBasedStrategy>()) {}
     ~ScoreCalculator() = default;
     
     /**
      * Set the scoring strategy to use
      * 
      * TODO: Implement method to set strategy
-     * @param strategy Shared pointer to scoring strategy
+     * @param strategy Unique pointer to scoring strategy
      */
-    void setStrategy(std::shared_ptr<ScoringStrategy> strategy);
+    void setStrategy(std::unique_ptr<ScoringStrategy> strategy);
     
     /**
      * Calculate score using current strategy
@@ -166,14 +166,14 @@ public:
      * @return Calculated score
      */
     int calculateScore(
-        std::shared_ptr<Plate> plate,
-        std::shared_ptr<Rocket> rocket,
+        std::unique_ptr<Plate> plate,
+        std::unique_ptr<Rocket> rocket,
         float hitTime
     ) const;
 
 private:
     // TODO: Add member variable to store current strategy
-    std::shared_ptr<ScoringStrategy> m_strategy;
+    std::unique_ptr<ScoringStrategy> m_strategy;
 };
 
 }
