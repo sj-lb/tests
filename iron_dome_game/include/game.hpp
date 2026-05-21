@@ -26,17 +26,14 @@ private:
     Grid grid;
     KeyboardListener keyboard_listener;
     GameStatistics stats;
-    ScoreCalculator scoreCalculator;
+    ScoreCalculator score_calculator;
 
-    bool isShotFired = false;
     bool gameIsActive = false;
 
     static constexpr int GAME_RUN_TIME_SEC = 60;
 
     // Statistics
     uint16_t platesFired = 0;
-    uint16_t plates_hit   = 0;
-    uint16_t shotsFired  = 0;
 
     float m_rocket_angle = 90.0f;
     float m_rocket_speed = 30.0f;

@@ -29,7 +29,6 @@ void Game::keyboardThread()
     {
         switch (keyboard_listener.getKey()) {
         case '\n':
-            isShotFired = true;
             spawnRocket();
             break;
         case KEY_ESC:
@@ -50,7 +49,6 @@ void Game::keyboardThread()
         default:
             break;
         }
-        // std::cout << "Fired" << std::endl;
     }
 }
 
@@ -68,12 +66,6 @@ void Game::play()
 
     while (gameIsActive)
     {
-        if (isShotFired)
-        {
-            isShotFired = false;
-            ++shotsFired;
-        }
-
         if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - lastTimeRefreshed).count() > 100)
         {
             system("clear");
@@ -88,13 +80,10 @@ void Game::play()
         {
             if (id2.has_value())
             {
-                ++plates_hit;
-
-                // Move both entities out of the grid exactly once.
                 auto e1 = grid.getEntity(id1);
                 auto e2 = grid.getEntity(id2.value());
 
-                Plate*  plate_ptr  = dynamic_cast<Plate*>(e1.get());
+                Plate* plate_ptr = dynamic_cast<Plate*>(e1.get());
                 Rocket* rocket_ptr = nullptr;
                 if (plate_ptr)
                 {
@@ -105,11 +94,17 @@ void Game::play()
                     plate_ptr  = dynamic_cast<Plate*>(e2.get());
                     rocket_ptr = dynamic_cast<Rocket*>(e1.get());
                 }
+                float hit_time = plate_ptr->airTime();
 
-                std::unique_ptr<Plate>  plate;
-                std::unique_ptr<Rocket> rocket;
-                if (plate_ptr)  plate  = std::make_unique<Plate>(*plate_ptr);
-                if (rocket_ptr) rocket = std::make_unique<Rocket>(*rocket_ptr);
+                std::unique_ptr<Plate> plate = std::make_unique<Plate>(*plate_ptr);
+                std::unique_ptr<Rocket> rocket = std::make_unique<Rocket>(*rocket_ptr);
+
+                stats.recordHit(
+                    score_calculator.calculateScore(
+                        std::move(plate),
+                        std::move(rocket),
+                        hit_time),
+                    hit_time);
 
                 grid.removeEntity(id2.value());
             }
@@ -124,15 +119,14 @@ void Game::play()
 
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-        auto gameTime = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - t0).count();
-        if (gameTime > GAME_RUN_TIME_SEC)
+        auto game_time = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - t0).count();
+        if (game_time > GAME_RUN_TIME_SEC)
         {
             gameIsActive = false;
         }
-        else if (gameTime / 2 > platesFired)
+        else if (game_time / 2 > platesFired)
         {
             spawnPlate();
-            ++platesFired;
         }
     }
 
@@ -153,6 +147,8 @@ void Game::spawnPlate()
         .x = static_cast<int16_t>(std::cos(ANGLE) * firePower),
         .y = static_cast<int16_t>(std::sin(ANGLE) * firePower)
     }));
+
+    ++platesFired;
 }
 
 void Game::spawnRocket() 
@@ -161,6 +157,7 @@ void Game::spawnRocket()
         Pos{static_cast<int16_t>(grid.columns() / 2), 3},
         m_rocket_angle,
         m_rocket_speed));
+
     stats.recordShot();
 }
 
