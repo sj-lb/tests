@@ -17,9 +17,10 @@ class Entity
 {
 public:
     virtual ~Entity() = 0;
+    
     virtual Pos pos() = 0;
-
     virtual std::optional<BoundingBox> boundingBox() { return std::nullopt; }
     virtual const std::vector<std::string> shape() const = 0;
+    virtual uint16_t width() const = 0;
 };
 }

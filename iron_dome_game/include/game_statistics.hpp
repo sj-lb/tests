@@ -65,7 +65,8 @@ public:
      * 
      * TODO: Implement method to record a miss
      */
-    void recordMiss();
+    void recordMiss() { m_current_streak = 0; }
+
     
     /**
      * Get total score

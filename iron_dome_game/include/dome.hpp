@@ -9,17 +9,10 @@ class Dome : public Entity
 {
 public:
     Dome(Pos pos) : m_pos(pos) {}
-    const std::vector<std::string> shape() const override
-    {
-        static const std::vector<std::string> shape = {
-            " __|__",
-            "/     \\",
-            "|_____|"
-        };
 
-        return shape;
-    }
-    virtual Pos pos() override { return m_pos; }
+    const std::vector<std::string> shape() const override;
+    uint16_t width() const override {return 7;}
+    Pos pos() override { return m_pos; }
 
 private:
     Pos m_pos;

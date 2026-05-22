@@ -11,9 +11,10 @@ public:
     Rocket(Pos pos,float angle, float speed);
     ~Rocket() = default;
 
-    virtual const std::vector<std::string> shape() const override;
-    virtual std::optional<BoundingBox> boundingBox() override;
-    virtual Pos pos() override { return trajectory.calculatePosition(); };
+    const std::vector<std::string> shape() const override;
+    std::optional<BoundingBox> boundingBox() override;
+    Pos pos() override { return trajectory.calculatePosition(); }
+    uint16_t width() const override { return 1; }
 
     Pos pos0() { return trajectory.initial_state.pos; }
 private:

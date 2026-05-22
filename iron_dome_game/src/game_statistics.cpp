@@ -12,13 +12,7 @@ void GameStatistics::recordHit(int score, float time_to_hit)
     m_total_score += score;
     ++m_total_hits;
     ++m_current_streak;
-}
-
-void GameStatistics::recordMiss()
-{
-    if (m_current_streak > m_best_streak)
-        m_best_streak = m_current_streak;
-    m_current_streak = 0;
+    m_best_streak = std::max(m_best_streak, m_current_streak);
 }
 
 int GameStatistics::getTotalScore() const
@@ -59,7 +53,7 @@ float GameStatistics::getAverageTimeToHit() const
 
 uint16_t GameStatistics::getBestStreak() const
 {
-    return std::max(m_best_streak, m_current_streak);
+    return m_best_streak;
 }
 
 std::string GameStatistics::getFormattedStats() const

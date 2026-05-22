@@ -26,10 +26,12 @@ public:
 
     void addEntity(std::unique_ptr<Entity> entity);
     void removeEntity(unsigned int id);
+    bool clearExpiredAndCheckMisses();
     std::unique_ptr<Entity> getEntity(unsigned int id) { return std::move(m_entities[id]); }
     std::vector<std::pair<unsigned int, std::optional<unsigned int>>> checkHits();
 
 private:
+    const std::vector<std::string> m_grid_template;
     std::vector<std::string> m_grid;
 
     mutable std::mutex m_mutex;

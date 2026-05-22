@@ -8,12 +8,17 @@
 namespace iron_dome_game
 {
 
-Grid::Grid(size_t rows, size_t columns) : m_grid(rows, std::string(columns, ' '))
+std::vector<std::string> grid_template(size_t rows, size_t columns)
 {
-    std::fill(m_grid[0].begin(), m_grid[0].end(), '_');
+    std::vector<std::string> grid_template(rows, std::string(columns, ' '));
+    std::fill(grid_template[0].begin(), grid_template[0].end(), '_');
     for (size_t i = 1; i < rows; ++i)
-        m_grid[i] += '\n';
+        grid_template[i] += '\n';
+    return grid_template;
 }
+
+Grid::Grid(size_t rows, size_t columns)
+: m_grid_template(grid_template(rows, columns)), m_grid(m_grid_template) {}
 
 //============================================================================//
 
@@ -35,14 +40,13 @@ void Grid::draw()
 {
     for (int i = rows() - 1; i >= 0; --i)
         std::cout << m_grid[i];
-    std::cout << std::endl;
+    std::cout << std::endl; // only flushed here
 }
 
 void Grid::refresh() 
 {
-    std::fill(m_grid[0].begin(), m_grid[0].end(), '_');
-    for (size_t i = 1; i < rows(); ++i)
-        std::fill(m_grid[i].begin(), m_grid[i].end() - 1, ' ');
+    m_grid.clear();
+    m_grid = m_grid_template;
 
     for (const auto& [id, entity] : m_entities)
         draw(entity);
@@ -56,14 +60,39 @@ void Grid::draw(const std::unique_ptr<Entity>& entity)
         int row = entity->pos().y + shape.size() - 1 - i;
         int col = entity->pos().x;
 
-        if (row >= 0 && row < rows() && col >= 0 && col < columns())
+        if (row >= 0 && row < rows() && col + entity->width() > 0 && col < columns())
         {
             uint16_t len = std::min(
                 static_cast<uint16_t>(shape[i].size()),
                 static_cast<uint16_t>(columns() - col));
-            m_grid[row].replace(col, len, shape[i].substr(0, len));
+            m_grid[row].replace(col, len, shape[i].substr(std::max(0, -col), len));
         }
     }
+}
+
+bool Grid::clearExpiredAndCheckMisses()
+{
+    bool has_misses = false;
+    std::vector<unsigned int> expired_ids;
+    for (const auto& [id, entity] : m_entities)
+    {
+        auto pos = entity->pos();
+        bool is_rocket = dynamic_cast<Rocket*>(entity.get()) != nullptr;
+
+        if (pos.y > rows() && is_rocket) {
+            has_misses = true;
+            expired_ids.push_back(id);
+        }
+        else if (pos.x < entity->width() || pos.x >= columns() || pos.y < 0) {
+            has_misses |= is_rocket;
+            expired_ids.push_back(id);
+        }
+    }
+
+    for (auto id : expired_ids)
+        removeEntity(id);
+
+    return has_misses;
 }
 
 std::vector<std::pair<unsigned int, std::optional<unsigned int>>> Grid::checkHits()
@@ -77,18 +106,6 @@ std::vector<std::pair<unsigned int, std::optional<unsigned int>>> Grid::checkHit
     {
         auto hit_box = entity->boundingBox();
         if (!hit_box.has_value()) continue;
-
-        if (entity->pos().y > rows())
-        {
-            if (dynamic_cast<Rocket*>(entity.get()) != nullptr)
-                hits.emplace_back(id, std::nullopt);
-            continue;
-        }
-        if (entity->pos().x < 0 || entity->pos().x >= columns() || entity->pos().y < 0)
-        {
-            hits.emplace_back(id, std::nullopt);
-            continue;
-        }
 
         for (int row = hit_box->lower_left.y; row <= hit_box->upper_right.y; ++row)
         {

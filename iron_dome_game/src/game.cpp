@@ -75,45 +75,39 @@ void Game::play()
             lastTimeRefreshed = std::chrono::steady_clock::now();
         }
 
+        if (grid.clearExpiredAndCheckMisses())
+            stats.recordMiss();
+
         auto hits = grid.checkHits();
         for (const auto& [id1, id2] : hits)
         {
-            if (id2.has_value())
+            auto e1 = grid.getEntity(id1);
+            auto e2 = grid.getEntity(id2.value());
+
+            Plate* plate_ptr = dynamic_cast<Plate*>(e1.get());
+            Rocket* rocket_ptr = nullptr;
+            if (plate_ptr)
             {
-                auto e1 = grid.getEntity(id1);
-                auto e2 = grid.getEntity(id2.value());
-
-                Plate* plate_ptr = dynamic_cast<Plate*>(e1.get());
-                Rocket* rocket_ptr = nullptr;
-                if (plate_ptr)
-                {
-                    rocket_ptr = dynamic_cast<Rocket*>(e2.get());
-                }
-                else
-                {
-                    plate_ptr  = dynamic_cast<Plate*>(e2.get());
-                    rocket_ptr = dynamic_cast<Rocket*>(e1.get());
-                }
-                float hit_time = plate_ptr->airTime();
-
-                std::unique_ptr<Plate> plate = std::make_unique<Plate>(*plate_ptr);
-                std::unique_ptr<Rocket> rocket = std::make_unique<Rocket>(*rocket_ptr);
-
-                stats.recordHit(
-                    score_calculator.calculateScore(
-                        std::move(plate),
-                        std::move(rocket),
-                        hit_time),
-                    hit_time);
-
-                grid.removeEntity(id2.value());
+                rocket_ptr = dynamic_cast<Rocket*>(e2.get());
             }
             else
             {
-                auto e1 = grid.getEntity(id1);
-                if (dynamic_cast<Rocket*>(e1.get()) != nullptr)
-                    stats.recordMiss();
+                plate_ptr  = dynamic_cast<Plate*>(e2.get());
+                rocket_ptr = dynamic_cast<Rocket*>(e1.get());
             }
+            float hit_time = plate_ptr->airTime();
+
+            std::unique_ptr<Plate> plate = std::make_unique<Plate>(*plate_ptr);
+            std::unique_ptr<Rocket> rocket = std::make_unique<Rocket>(*rocket_ptr);
+
+            stats.recordHit(
+                score_calculator.calculateScore(
+                    std::move(plate),
+                    std::move(rocket),
+                    hit_time),
+                hit_time);
+
+            grid.removeEntity(id2.value());
             grid.removeEntity(id1);
         }
 
