@@ -96,7 +96,7 @@ bool Grid::clearExpiredAndCheckMisses()
             expired_ids.push_back(id);
         }
         else if (pos.x < entity->width() || pos.x >= columns() || pos.y < 0) {
-            has_misses |= is_rocket;
+            has_misses = true;
             expired_ids.push_back(id);
         }
     }
