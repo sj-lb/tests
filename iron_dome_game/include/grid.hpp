@@ -22,15 +22,16 @@ public:
     uint16_t rows() { return m_grid.size(); }
     uint16_t columns() { return m_grid.empty() ? 0 : m_grid[0].size(); }
 
-    void draw(const std::unique_ptr<Entity>& entity);
+    void draw(std::vector<std::string>& grid, const std::unique_ptr<Entity>& entity);
 
     void addEntity(std::unique_ptr<Entity> entity);
     void removeEntity(unsigned int id);
     bool clearExpiredAndCheckMisses();
     std::unique_ptr<Entity> getEntity(unsigned int id) { return std::move(m_entities[id]); }
-    std::vector<std::pair<unsigned int, std::optional<unsigned int>>> checkHits();
+    std::vector<std::pair<unsigned int, unsigned int>> checkHits();
 
 private:
+    std::vector<std::string> prep_static_grid(size_t rows, size_t columns);
     const std::vector<std::string> m_grid_template;
     std::vector<std::string> m_grid;
 

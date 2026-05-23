@@ -14,9 +14,6 @@ namespace iron_dome_game
 class Game
 {
 public:
-    Game();
-    ~Game() = default;
-
     void play();
     void keyboardThread();
     
@@ -28,12 +25,12 @@ private:
     GameStatistics stats;
     ScoreCalculator score_calculator;
 
-    bool gameIsActive = false;
+    bool is_running = false;
 
     static constexpr int GAME_RUN_TIME_SEC = 60;
 
     // Statistics
-    uint16_t platesFired = 0;
+    uint16_t plates_fired = 0;
 
     float m_rocket_angle = 90.0f;
     float m_rocket_speed = 30.0f;

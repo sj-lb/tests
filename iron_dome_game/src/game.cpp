@@ -13,26 +13,16 @@
 namespace iron_dome_game
 {
 
-Game::Game() 
-{
-    grid.addEntity(std::make_unique<iron_dome_game::Pitcher>(
-        Pos{static_cast<int16_t>(grid.columns() - 7), 0}));
-    grid.addEntity(std::make_unique<iron_dome_game::Dome>(
-        Pos{static_cast<int16_t>(grid.columns() / 2 - 3), 0}));
-}
-
-//============================================================================//
-
 void Game::keyboardThread() 
 {
-    while (gameIsActive)
+    while (is_running)
     {
         switch (keyboard_listener.getKey()) {
         case '\n':
             spawnRocket();
             break;
         case KEY_ESC:
-            gameIsActive = false;
+            is_running = false;
             break;
         case KEY_UP:
             m_rocket_speed += m_rocket_speed < 100.0f ? 5.0f : 0.0f;
@@ -56,47 +46,33 @@ void Game::keyboardThread()
 
 void Game::play() 
 {
-    gameIsActive = true;
+    is_running = true;
 
     // std::cout << "PLAYING" << std::endl;
     std::chrono::steady_clock::time_point t0 = std::chrono::steady_clock::now();
     std::thread keyboard_thread(&Game::keyboardThread, this);
 
-    std::chrono::steady_clock::time_point lastTimeRefreshed = std::chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point last_refresh = std::chrono::steady_clock::now();
 
-    while (gameIsActive)
+    while (is_running)
     {
-        if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - lastTimeRefreshed).count() > 100)
+        if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - last_refresh).count() > 100)
         {
             system("clear");
             grid.refresh();
             grid.draw();
             
-            lastTimeRefreshed = std::chrono::steady_clock::now();
+            last_refresh = std::chrono::steady_clock::now();
         }
 
         if (grid.clearExpiredAndCheckMisses())
             stats.recordMiss();
 
         auto hits = grid.checkHits();
-        for (const auto& [id1, id2] : hits)
+        for (const auto& [rocket_id, plate_id] : hits)
         {
-            auto e1 = grid.getEntity(id1);
-            auto e2 = grid.getEntity(id2.value());
-
-            Plate* plate_ptr = dynamic_cast<Plate*>(e1.get());
-            Rocket* rocket_ptr = nullptr;
-            if (plate_ptr)
-            {
-                rocket_ptr = dynamic_cast<Rocket*>(e2.get());
-            }
-            else
-            {
-                plate_ptr  = dynamic_cast<Plate*>(e2.get());
-                rocket_ptr = dynamic_cast<Rocket*>(e1.get());
-            }
-            float hit_time = plate_ptr->airTime();
-
+            auto rocket_ptr = dynamic_cast<Rocket*>(grid.getEntity(rocket_id).get());
+            auto plate_ptr = dynamic_cast<Plate*>(grid.getEntity(plate_id).get());
             std::unique_ptr<Plate> plate = std::make_unique<Plate>(*plate_ptr);
             std::unique_ptr<Rocket> rocket = std::make_unique<Rocket>(*rocket_ptr);
 
@@ -104,19 +80,19 @@ void Game::play()
                 score_calculator.calculateScore(
                     std::move(plate),
                     std::move(rocket),
-                    hit_time),
-                hit_time);
+                    plate->airTime()),
+                plate->airTime());
 
-            grid.removeEntity(id2.value());
-            grid.removeEntity(id1);
+            grid.removeEntity(rocket_id);
+            grid.removeEntity(plate_id);
         }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
         auto game_time = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - t0).count();
         if (game_time > GAME_RUN_TIME_SEC)
-            gameIsActive = false;
-        else if (game_time / 2 > platesFired)
+            is_running = false;
+        else if (game_time / 2 > plates_fired)
             spawnPlate();
     }
 
@@ -138,7 +114,7 @@ void Game::spawnPlate()
         .y = static_cast<int16_t>(std::sin(ANGLE) * firePower)
     }));
 
-    ++platesFired;
+    ++plates_fired;
 }
 
 void Game::spawnRocket() 
