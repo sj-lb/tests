@@ -1,3 +1,15 @@
+# Autonomous Workflow Phases
+For any non-trivial task (more than 2 files or 50 lines), follow these phases:
+
+1. **Research & Discovery**: If the task involves external libraries, new APIs, or Python idioms you haven't used in this repo, use the `web_search` or `browser` tool first. Present a "Research Summary" of findings.
+2. **High-Level Design (HLD)**: Before implementation, propose the architecture. Specify:
+   - Module structure and data flow.
+   - Design patterns (e.g., Factory, Observer).
+   - Core Interface/Class definitions.
+3. **Plan Review**: Pause and ask: "Does this design meet your requirements?" before editing files.
+4. **Execution**: Implement following the "Python Style" rules below.
+5. **Auto-Verification**: Run tests and linters. If they fail, fix them without asking.
+
 # Core Commands
 - Run test suite: `pytest`
 - Run single test file: `pytest tests/test_filename.py`
